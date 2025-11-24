@@ -6,6 +6,7 @@ export default function Home() {
       <div className="p-5 mb-4 bg-light rounded-3">
         <div className="container-fluid py-5">
           <h1 className="display-5 fw-bold">Welcome to Health Check Hub</h1>
+          <h1 className="display-5 fw-bold">something is added  for check</h1>
           <p className="col-md-8 fs-4">Track health metrics, view personalized reports, get nutrition tips, find nearby clinics on the map, and chat directly with doctors.</p>
           <NavLink to="/signup" className="btn btn-primary btn-lg me-2">Get Started</NavLink>
           <NavLink to="/login" className="btn btn-outline-primary btn-lg">Log in</NavLink>
