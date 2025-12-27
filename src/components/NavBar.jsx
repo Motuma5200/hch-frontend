@@ -1,32 +1,40 @@
-import { NavLink } from 'react-router-dom'
+import React from 'react';
+import { Nav, Navbar, Container, Button } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
 
-export default function NavBar() {
-  const linkClass = ({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')
+const NavBar = () => {
+  const navigate = useNavigate();
+  const token = localStorage.getItem('token');
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+    window.location.reload(); // Ensures the navbar updates immediately
+  };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-light bg-light">
-      <div className="container-fluid">
-        <NavLink className="navbar-brand" to="/">Health Check Hub</NavLink>
-        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-          <span className="navbar-toggler-icon" />
-        </button>
-        <div className="collapse navbar-collapse" id="navbarNav">
-          <ul className="navbar-nav ms-auto">
-            <li className="nav-item">
-              <NavLink to="/" className={linkClass}>Home</NavLink>
-            </li>
-             <li className="nav-item">
-              <NavLink to="/ask" className={linkClass}>Ask</NavLink>
-            </li>
-            <li className="nav-item">
-              <NavLink to="/login" className={linkClass}>Login</NavLink>
-            </li>
-            <li className="nav-item">
-              <NavLink to="/signup" className={linkClass}>Sign Up</NavLink>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </nav>
-  )
-}
+    <Navbar bg="white" expand="lg" className="border-bottom mb-4">
+      <Container>
+        <Navbar.Brand as={Link} to="/" className="fw-bold text-primary">Health Hub</Navbar.Brand>
+        <Navbar.Toggle aria-controls="basic-navbar-nav" />
+        <Navbar.Collapse id="basic-navbar-nav">
+          <Nav className="me-auto">
+            {token && <Nav.Link as={Link} to="/">Dashboard</Nav.Link>}
+          </Nav>
+          <Nav>
+            {token ? (
+              <Button variant="outline-danger" size="sm" onClick={handleLogout}>
+                Logout
+              </Button>
+            ) : (
+              <Nav.Link as={Link} to="/login">Login</Nav.Link>
+            )}
+          </Nav>
+        </Navbar.Collapse>
+      </Container>
+    </Navbar>
+  );
+};
+
+export default NavBar;
