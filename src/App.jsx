@@ -1,23 +1,28 @@
-import './App.css'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import NavBar from './components/NavBar'
-import Home from './pages/Home'
-import Login from './pages/Login'
-import Signup from './pages/Signup'
-import Ask from './pages/Ask'
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import 'bootstrap/dist/css/bootstrap.min.css';
+
+// IMPORT YOUR COMPONENTS
+import UserDashboard from './pages/UserDashboard';
+import Login from './pages/Login'; 
+import NavBar from './components/NavBar'; // Updated import to match file name
 
 function App() {
   return (
-    <BrowserRouter>
-      <NavBar />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path='/ask' element={<Ask/>}/>
-      </Routes>
-    </BrowserRouter>
-  )
+    <Router>
+      <div className="App">
+        {/* Nav component now matches the import */}
+        <NavBar /> 
+        
+        <Routes>
+          <Route path="/login" element={<Login />} /> 
+          <Route path="/" element={<UserDashboard />} /> 
+          <Route path="/dashboard" element={<UserDashboard />} />
+          <Route path="/health" element={<UserDashboard />} />
+        </Routes>
+      </div>
+    </Router>
+  );
 }
 
-export default App
+export default App;
