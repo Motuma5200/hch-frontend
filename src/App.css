@@ -1,0 +1,42 @@
+/* Navigation Bar Link Styles */
+.navbar-nav .nav-link {
+  font-weight: bold;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.navbar-nav .nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: white;
+  transition: width 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover::after,
+.navbar-nav .nav-link.active::after {
+  width: 100%;
+}
+
+/* Card Hover Effects */
+.card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Sticky Filter */
+.sticky-filter {
+  position: sticky;
+  top: 70px;
+  z-index: 1040;
+  background-color: white;
+  padding: 1rem 0;
+  border-bottom: 1px solid #dee2e6;
+}

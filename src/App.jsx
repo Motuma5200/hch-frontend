@@ -1,10 +1,13 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import './App.css';
 
 // IMPORT YOUR COMPONENTS
 import UserDashboard from './pages/UserDashboard';
 import Login from './pages/Login'; 
+import Learn from './pages/Learn';
+import TutorialDetail from './pages/TutorialDetail';
 import NavBar from './components/NavBar'; // Updated import to match file name
 
 function App() {
@@ -19,6 +22,8 @@ function App() {
           <Route path="/" element={<UserDashboard />} /> 
           <Route path="/dashboard" element={<UserDashboard />} />
           <Route path="/health" element={<UserDashboard />} />
+          <Route path="/learn" element={<Learn />} />
+          <Route path="/learn/:id" element={<TutorialDetail />} />
         </Routes>
       </div>
     </Router>
