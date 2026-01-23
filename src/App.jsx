@@ -8,6 +8,7 @@ import UserDashboard from './pages/UserDashboard';
 import Login from './pages/Login'; 
 import Learn from './pages/Learn';
 import TutorialDetail from './pages/TutorialDetail';
+import Ask from './pages/Ask'
 import NavBar from './components/NavBar'; // Updated import to match file name
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
           <Route path="/dashboard" element={<UserDashboard />} />
           <Route path="/health" element={<UserDashboard />} />
           <Route path="/learn" element={<Learn />} />
+          <Route path="/ai" element={<Ask/>} />
           <Route path="/learn/:id" element={<TutorialDetail />} />
         </Routes>
       </div>
