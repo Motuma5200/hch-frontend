@@ -1,11 +1,21 @@
-// Example: hch-frontend/src/services/Api.jsx
+import axios from 'axios';
 
-import axios from "axios";
+const api = axios.create({
+  baseURL: 'http://localhost:8000',          // or import.meta.env.VITE_LARAVEL_URL
+  withCredentials: true,                     // Critical – sends cookies
+  headers: {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+  },
+});
 
-export default axios.create({
-    // ⭐ CRITICAL FIX: Use 127.0.0.1 to match the running server address precisely
-    baseURL: "http://127.0.0.1:8000/api",
-    
-    // Ensure withCredentials: true is removed for stateless token auth
-    // (As per your previous correct fix)
-})
+// Optional: auto-refresh CSRF before mutating requests (very reliable)
+api.interceptors.request.use(async (config) => {
+  if (['post', 'put', 'patch', 'delete'].includes(config.method)) {
+    // You can add a check if XSRF-TOKEN cookie exists, but simplest is always fetch
+    await axios.get('http://localhost:8000/sanctum/csrf-cookie', { withCredentials: true });
+  }
+  return config;
+});
+
+export default api;

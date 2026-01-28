@@ -13,28 +13,42 @@ const Login = () => {
     setError('');
 
     try {
+      // Step 1: Fetch CSRF cookie (sets XSRF-TOKEN & laravel_session cookies)
+      await fetch('http://localhost:8000/sanctum/csrf-cookie', {
+        method: 'GET',
+        credentials: 'include',           // ← Critical: sends/accepts cookies cross-origin
+      });
+
+      // Step 2: Now do the actual login POST
       const response = await fetch('http://localhost:8000/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          // Optional: manually add X-XSRF-TOKEN (uncomment if still failing)
+          // 'X-XSRF-TOKEN': decodeURIComponent(
+          //   document.cookie
+          //     .split('; ')
+          //     .find(row => row.startsWith('XSRF-TOKEN='))
+          //     ?.split('=')[1] || ''
+          // ),
         },
+        credentials: 'include',           // ← Critical again
         body: JSON.stringify({ email, password }),
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        // FIXED: Using 'token' to match all other components
         localStorage.setItem('token', result.token);
         localStorage.setItem('user', JSON.stringify(result.user));
-        // Redirect to dashboard and force a refresh to update the Navbar state
         window.location.href = '/'; 
       } else {
         setError(result.message || 'Invalid credentials');
       }
     } catch (err) {
       setError('Connection error. Is the backend running?');
+      console.error(err);
     }
   };
 
