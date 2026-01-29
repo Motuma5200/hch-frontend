@@ -10,6 +10,8 @@ import Learn from './pages/Learn';
 import TutorialDetail from './pages/TutorialDetail';
 import Ask from './pages/Ask'
 import NavBar from './components/NavBar'; // Updated import to match file name
+import Signup from './pages/Signup';
+import Home from './pages/Home';
 
 function App() {
   return (
@@ -20,11 +22,12 @@ function App() {
         
         <Routes>
           <Route path="/login" element={<Login />} /> 
-          <Route path="/" element={<UserDashboard />} /> 
+          <Route path="/" element={<Home />} /> 
           <Route path="/dashboard" element={<UserDashboard />} />
           <Route path="/health" element={<UserDashboard />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/ai" element={<Ask/>} />
+          <Route path="/signup" element={<Signup/>} />
           <Route path="/learn/:id" element={<TutorialDetail />} />
         </Routes>
       </div>

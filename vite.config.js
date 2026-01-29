@@ -4,4 +4,20 @@ import react from '@vitejs/plugin-react-swc'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8000',     // ← change to 127.0.0.1 (IPv4)
+        changeOrigin: true,
+        secure: false,
+      },
+
+      '/sanctum': {
+        target: 'http://127.0.0.1:8000',     // ← same here
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 })

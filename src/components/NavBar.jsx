@@ -24,7 +24,7 @@ const NavBar = () => {
             <Nav.Link as={NavLink} to="/learn" className="fs-5 text-white">Learn</Nav.Link>
             <Nav.Link as={NavLink} to="/about" className="fs-5 text-white">About</Nav.Link>
             <Nav.Link as={NavLink} to="/ai" className="fs-5 text-white">AI</Nav.Link>
-            {token && <Nav.Link as={NavLink} to="/" className="fs-5 text-white">Dashboard</Nav.Link>}
+            {token && <Nav.Link as={NavLink} to="/dashboard" className="fs-5 text-white">Dashboard</Nav.Link>}
           </Nav>
           <Nav>
             {token ? (
@@ -35,6 +35,7 @@ const NavBar = () => {
               <Nav.Link as={Link} to="/login" className="fs-5 text-white">Login</Nav.Link>
             )}
           </Nav>
+          <Nav.Link as={NavLink} to="/signup" className="fs-5 text-white">Sign up</Nav.Link>
         </Navbar.Collapse>
       </Container>
     </Navbar>

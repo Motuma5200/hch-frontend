@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Form, Button, Card, Container, Alert } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -13,27 +13,20 @@ const Login = () => {
     setError('');
 
     try {
-      // Step 1: Fetch CSRF cookie (sets XSRF-TOKEN & laravel_session cookies)
+      // Step 1: Fetch CSRF cookie
       await fetch('http://localhost:8000/sanctum/csrf-cookie', {
         method: 'GET',
-        credentials: 'include',           // ← Critical: sends/accepts cookies cross-origin
+        credentials: 'include',
       });
 
-      // Step 2: Now do the actual login POST
+      // Step 2: Login POST
       const response = await fetch('http://localhost:8000/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          // Optional: manually add X-XSRF-TOKEN (uncomment if still failing)
-          // 'X-XSRF-TOKEN': decodeURIComponent(
-          //   document.cookie
-          //     .split('; ')
-          //     .find(row => row.startsWith('XSRF-TOKEN='))
-          //     ?.split('=')[1] || ''
-          // ),
         },
-        credentials: 'include',           // ← Critical again
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
 
@@ -42,7 +35,7 @@ const Login = () => {
       if (response.ok) {
         localStorage.setItem('token', result.token);
         localStorage.setItem('user', JSON.stringify(result.user));
-        window.location.href = '/'; 
+        navigate('/dashboard');           // ← redirect to dashboard
       } else {
         setError(result.message || 'Invalid credentials');
       }
@@ -53,11 +46,18 @@ const Login = () => {
   };
 
   return (
-    <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: '80vh' }}>
+    <Container 
+      className="d-flex align-items-center justify-content-center" 
+      style={{ minHeight: '80vh',
+         paddingTop: '90px'  // 
+       }}
+    >
       <Card style={{ width: '400px' }} className="shadow-sm border-0">
         <Card.Body className="p-4">
           <h2 className="text-center mb-4 fw-bold text-primary">Login</h2>
+
           {error && <Alert variant="danger">{error}</Alert>}
+
           <Form onSubmit={handleLogin}>
             <Form.Group className="mb-3">
               <Form.Label>Email Address</Form.Label>
@@ -70,7 +70,7 @@ const Login = () => {
               />
             </Form.Group>
 
-            <Form.Group className="mb-4">
+            <Form.Group className="mb-3">
               <Form.Label>Password</Form.Label>
               <Form.Control 
                 type="password" 
@@ -81,10 +81,35 @@ const Login = () => {
               />
             </Form.Group>
 
-            <Button variant="primary" type="submit" className="w-100 py-2 fw-bold">
+            <div className="text-end mb-4">
+              <Link 
+                to="/forgot-password" 
+                className="text-muted text-decoration-none small"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
+            <Button 
+              variant="primary" 
+              type="submit" 
+              className="w-100 py-2 fw-bold"
+            >
               Sign In
             </Button>
           </Form>
+
+          <div className="text-center mt-4">
+            <p className="text-muted mb-0">
+              Don't have an account?{' '}
+              <Link 
+                to="/signup" 
+                className="text-primary fw-semibold text-decoration-none"
+              >
+                Sign up
+              </Link>
+            </p>
+          </div>
         </Card.Body>
       </Card>
     </Container>
