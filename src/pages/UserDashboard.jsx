@@ -4,6 +4,7 @@ import HealthDataInput from '../components/health/HealthDataInput';
 import SymptomInput from '../components/health/SymptomInput';
 import HealthStatusDashboard from '../components/health/HealthStatusDashboard';
 import HealthCharts from '../components/health/HealthCharts';
+import HealthHistory from '../components/health/HealthHistory';
 
 const UserDashboard = () => {
   // Key to force child components to refresh when data is recorded
@@ -41,18 +42,7 @@ const UserDashboard = () => {
         </Tab>
         
         <Tab eventKey="history" title="Data History">
-          <Card className="border-0 shadow-sm">
-            <Card.Body>
-              <h5 className="fw-bold">Data History</h5>
-              <p className="text-muted">
-                View and manage your historical health data. This feature will show a complete history 
-                of all your recorded metrics and symptoms with filtering options.
-              </p>
-              <Alert variant="info" className="mb-0">
-                <strong>Coming Soon:</strong> Full data history with advanced filtering and export capabilities.
-              </Alert>
-            </Card.Body>
-          </Card>
+          <HealthHistory key={`history-${refreshToggle}`} />
         </Tab>
       </Tabs>
     </Container>

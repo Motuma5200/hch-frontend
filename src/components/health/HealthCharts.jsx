@@ -31,86 +31,110 @@ const HealthCharts = () => {
     { value: 'heart_rate', label: 'Heart Rate' }
   ];
 
-  const fetchChartData = useCallback(async () => {
-    // Check both common token names
-    const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-    
-    if (!token) {
-      setApiError('Authentication token missing. Please log in again.');
-      setLoading(false);
-      return;
+ const fetchChartData = useCallback(async () => {
+  const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+
+  if (!token) {
+    setApiError('Authentication token missing. Please log in again.');
+    setLoading(false);
+    return;
+  }
+
+  setLoading(true);
+  setApiError(null);
+
+  try {
+    const url = `http://localhost:8000/api/health/charts/${selectedMetric}?days=${days}`;
+    console.log("Requesting URL:", url);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json'
+      }
+    });
+
+    // Defensive parsing if server responds with HTML / not JSON
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      const text = await response.text();
+      throw new Error('Non-JSON response from server: ' + text.slice(0, 300));
     }
 
-    setLoading(true);
-    setApiError(null);
+    const result = await response.json();
+    if (!result.success) throw new Error(result.message || `Server Error ${response.status}`);
 
-    try {
-      const url = `http://localhost:8000/api/health/charts/${selectedMetric}?days=${days}`;
-      console.log("Requesting URL:", url);
+    // Normalize into an array of { date, value } or { date, systolic, diastolic }
+    let normalized = [];
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
+    if (result.data && Array.isArray(result.data.flat) && result.data.flat.length > 0) {
+      normalized = result.data.flat.map(it => {
+        return selectedMetric === 'blood_pressure'
+          ? { date: it.date, systolic: it.systolic, diastolic: it.diastolic }
+          : { date: it.date, value: it.value };
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Server Error ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log("API Success Data:", result.data);
-
-      if (result.success && result.data && result.data.length > 0) {
-        const labels = result.data.map(item => item.date);
-        let datasets = [];
-
-        if (selectedMetric === 'blood_pressure') {
-          datasets = [
-            {
-              label: 'Systolic',
-              data: result.data.map(item => item.systolic),
-              borderColor: 'rgb(255, 99, 132)',
-              backgroundColor: 'rgba(255, 99, 132, 0.1)',
-              tension: 0.3,
-              fill: true,
-            },
-            {
-              label: 'Diastolic',
-              data: result.data.map(item => item.diastolic),
-              borderColor: 'rgb(54, 162, 235)',
-              backgroundColor: 'rgba(54, 162, 235, 0.1)',
-              tension: 0.3,
-              fill: true,
-            }
-          ];
-        } else {
-          datasets = [{
-            label: metricOptions.find(m => m.value === selectedMetric)?.label || selectedMetric.toUpperCase(),
-            data: result.data.map(item => item.value),
-            borderColor: 'rgb(75, 192, 192)',
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            tension: 0.3,
-            pointRadius: 6,
-            fill: true,
-          }];
-        }
-        setChartData({ labels, datasets });
+    } else if (Array.isArray(result.data)) {
+      normalized = result.data;
+    } else if (result.data && result.data.series) {
+      if (selectedMetric === 'blood_pressure') {
+        const sys = result.data.series.systolic || [];
+        const dia = result.data.series.diastolic || [];
+        const dMap = new Map(dia.map(d => [d.x, d.y]));
+        normalized = sys.map(s => ({ date: s.x, systolic: s.y, diastolic: dMap.get(s.x) ?? null }));
       } else {
-        setChartData(null);
+        normalized = (result.data.series || []).map(p => ({ date: p.x, value: p.y }));
       }
-    } catch (error) {
-      console.error('Frontend Fetch Error:', error);
-      setApiError(error.message);
-      setChartData(null);
-    } finally {
-      setLoading(false);
     }
-  }, [selectedMetric, days]);
+
+    if (!normalized.length) {
+      setChartData(null);
+      setApiError(null);
+    } else {
+      const labels = normalized.map(item => item.date);
+      let datasets = [];
+
+      if (selectedMetric === 'blood_pressure') {
+        datasets = [
+          {
+            label: 'Systolic',
+            data: normalized.map(i => i.systolic),
+            borderColor: 'rgb(255, 99, 132)',
+            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+            tension: 0.3,
+            fill: true,
+          },
+          {
+            label: 'Diastolic',
+            data: normalized.map(i => i.diastolic),
+            borderColor: 'rgb(54, 162, 235)',
+            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+            tension: 0.3,
+            fill: true,
+          }
+        ];
+      } else {
+        datasets = [{
+          label: metricOptions.find(m => m.value === selectedMetric)?.label || selectedMetric.toUpperCase(),
+          data: normalized.map(i => i.value),
+          borderColor: 'rgb(75, 192, 192)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          tension: 0.3,
+          pointRadius: 6,
+          fill: true,
+        }];
+      }
+
+      setChartData({ labels, datasets });
+    }
+  } catch (error) {
+    console.error('Frontend Fetch Error:', error);
+    setApiError(error.message);
+    setChartData(null);
+  } finally {
+    setLoading(false);
+  }
+}, [selectedMetric, days]);
 
   useEffect(() => {
     fetchChartData();
