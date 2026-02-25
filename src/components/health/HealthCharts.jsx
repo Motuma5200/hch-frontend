@@ -17,7 +17,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 const HealthCharts = () => {
   const [chartData, setChartData] = useState(null);
-  const [selectedMetric, setSelectedMetric] = useState('bmi');
+  const [selectedMetric, setSelectedMetric] = useState('blood_pressure');
   const [days, setDays] = useState(90); 
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState(null);

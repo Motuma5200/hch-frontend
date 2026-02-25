@@ -8,10 +8,10 @@ export default function Home() {
       <section 
         className="bg-primary text-white text-center py-5" 
         style={{
-          backgroundImage: `linear-gradient(rgba(13, 109, 253, 0.33), rgba(13, 109, 253, 0.33)), url(${heroImage})`,
+          backgroundImage: `linear-gradient(rgba(13, 109, 253, 0.33), rgba(12, 87, 199, 0.43)), url(${heroImage})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          minHeight: '70vh',
+          minHeight: '90vh',
           display: 'flex',
           alignItems: 'center'
         }}
@@ -20,9 +20,14 @@ export default function Home() {
           <h1 className="display-3 fw-bold mb-3">
             Your Health, Your Control
           </h1>
+          
           <p className="lead fs-4 mb-4 col-md-10 mx-auto">
-            Empowering you with smart tracking, personalized insights, nutrition guidance, nearby clinic discovery, and direct AI-powered medical conversations — all in one place.
-          </p>
+  <strong>
+    Empowering you with smart tracking, personalized insights, nutrition guidance, nearby clinic discovery, and direct AI-powered medical conversations — all in one place.
+  </strong>
+</p>
+
+
           <div className="d-flex justify-content-center gap-3 flex-wrap">
             <NavLink 
               to="/ai" 
@@ -32,7 +37,7 @@ export default function Home() {
             </NavLink>
             <NavLink 
               to="/login" 
-              className="btn btn-outline-light btn-lg px-5 py-3 fw-bold"
+              className="btn btn-light btn-lg px-5 py-3 fw-bold"
             >
               Log In
             </NavLink>

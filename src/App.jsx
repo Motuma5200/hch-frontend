@@ -12,6 +12,12 @@ import Ask from './pages/Ask'
 import NavBar from './components/NavBar'; // Updated import to match file name
 import Signup from './pages/Signup';
 import Home from './pages/Home';
+import AdminDashboard from './pages/AdminDashboard';
+import DoctorDashboard from './pages/DoctorDashboard';
+import PharmacyAdminDashboard from './pages/PharmacyAdminDashboard';
+import ClientDashboard from './pages/ClientDashboard';
+import Approvals from './pages/Approvals';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -24,6 +30,11 @@ function App() {
           <Route path="/login" element={<Login />} /> 
           <Route path="/" element={<Home />} /> 
           <Route path="/dashboard" element={<UserDashboard />} />
+          <Route path="/admin" element={<ProtectedRoute roles={["admin"]} element={<AdminDashboard/>} />} />
+          <Route path="/doctor" element={<ProtectedRoute roles={["doctor"]} element={<DoctorDashboard/>} />} />
+          <Route path="/pharmacy" element={<ProtectedRoute roles={["pharmacy_admin"]} element={<PharmacyAdminDashboard/>} />} />
+          <Route path="/client" element={<ProtectedRoute roles={["client"]} element={<ClientDashboard/>} />} />
+          <Route path="/approvals" element={<ProtectedRoute roles={["admin"]} element={<Approvals/>} />} />
           <Route path="/health" element={<UserDashboard />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/ai" element={<Ask/>} />

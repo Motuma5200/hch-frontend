@@ -5,6 +5,8 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 const NavBar = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
+  const userStr = localStorage.getItem('user');
+  const role = localStorage.getItem('role') || (userStr ? JSON.parse(userStr).role : null);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -28,14 +30,14 @@ const NavBar = () => {
           </Nav>
           <Nav>
             {token ? (
-              <Button variant="outline-danger" size="sm" onClick={handleLogout}>
+              <Button variant="danger" size="sm" onClick={handleLogout}>
                 Logout
               </Button>
             ) : (
               <Nav.Link as={Link} to="/login" className="fs-5 text-white">Login</Nav.Link>
             )}
           </Nav>
-          <Nav.Link as={NavLink} to="/signup" className="fs-5 text-white">Sign up</Nav.Link>
+          {!token && <Nav.Link as={NavLink} to="/signup" className="fs-5 text-white">Sign up</Nav.Link>}
         </Navbar.Collapse>
       </Container>
     </Navbar>

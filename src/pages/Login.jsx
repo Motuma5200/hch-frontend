@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Form, Button, Card, Container, Alert } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
+import api, { login as apiLogin } from '../services/Api';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -13,35 +14,34 @@ const Login = () => {
     setError('');
 
     try {
-      // Step 1: Fetch CSRF cookie
-      await fetch('http://localhost:8000/sanctum/csrf-cookie', {
-        method: 'GET',
-        credentials: 'include',
-      });
+      // Use axios wrapper which handles CSRF cookie via interceptor
+      await api.post('/sanctum/csrf-cookie', {}, { withCredentials: true }).catch(() => null);
+      const response = await apiLogin({ email, password });
+      const result = response.data;
 
-      // Step 2: Login POST
-      const response = await fetch('http://localhost:8000/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ email, password }),
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem('token', result.token);
+      // Persist token and user from backend response
+      if (result.token) localStorage.setItem('token', result.token);
+      if (result.user) {
         localStorage.setItem('user', JSON.stringify(result.user));
-        navigate('/dashboard');           // ← redirect to dashboard
-      } else {
-        setError(result.message || 'Invalid credentials');
+        if (result.user.role) localStorage.setItem('role', result.user.role);
+        // store approval flag
+        localStorage.setItem('approved', result.user.approved ? '1' : '0');
       }
+
+      // Redirect based on backend-provided role and approval
+      const role = result.user?.role;
+      const approved = !!result.user?.approved;
+
+      if (role === 'admin') return navigate('/admin');
+      if (role === 'doctor') return approved ? navigate('/doctor') : navigate('/dashboard');
+      if (role === 'pharmacy_admin') return approved ? navigate('/pharmacy') : navigate('/dashboard');
+
+      // default: client/user dashboard
+      navigate('/dashboard');
     } catch (err) {
-      setError('Connection error. Is the backend running?');
       console.error(err);
+      const message = err?.response?.data?.message || 'Connection error. Is the backend running?';
+      setError(message);
     }
   };
 
