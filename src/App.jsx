@@ -18,6 +18,7 @@ import PharmacyAdminDashboard from './pages/PharmacyAdminDashboard';
 import ClientDashboard from './pages/ClientDashboard';
 import Approvals from './pages/Approvals';
 import ProtectedRoute from './components/ProtectedRoute';
+import HospitalMap from './pages/HospitalMap';
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
           <Route path="/ai" element={<Ask/>} />
           <Route path="/signup" element={<Signup/>} />
           <Route path="/learn/:id" element={<TutorialDetail />} />
+          <Route path="facilities" element={<HospitalMap />} />
         </Routes>
       </div>
     </Router>
