@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, Card, Form, Button, ListGroup, Alert, Spinner, Badge } from 'react-bootstrap';
 import { getDoctors, sendChatMessage, getChatMessages } from '../services/Api';
+import WebSocketService from '../services/WebSocketService';
 
 const ContactDoctor = () => {
   const [doctors, setDoctors] = useState([]);
@@ -8,11 +9,15 @@ const ContactDoctor = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
   const [fetchingDoctors, setFetchingDoctors] = useState(true);
   const [error, setError] = useState('');
   const [unreadDoctors, setUnreadDoctors] = useState({});
   const [notification, setNotification] = useState('');
+  const [isConnected, setIsConnected] = useState(false);
   const notificationTimer = useRef(null);
+  const messageCallbackRef = useRef(null);
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const getDoctorLastSeen = (doctorId) => {
     const raw = localStorage.getItem(`client_chat_last_seen_${doctorId}`);
@@ -49,6 +54,44 @@ const ContactDoctor = () => {
     };
 
     fetchDoctors();
+
+    // Connect to WebSocket
+    if (user.id) {
+      WebSocketService.connect(user.id, 'client');
+
+      // Handle connection status
+      WebSocketService.onConnectionChange((connected) => {
+        setIsConnected(connected);
+      });
+
+      // Handle incoming messages
+      messageCallbackRef.current = (data) => {
+        if (data.sender_type === 'doctor' && data.sender_id === selectedDoctor?.id) {
+          // Add new message to chat
+          const newMsg = {
+            id: Date.now(),
+            sender: 'Doctor',
+            text: data.message,
+            timestamp: new Date().toLocaleTimeString(),
+          };
+          setMessages(prev => [...prev, newMsg]);
+
+          // Mark as read
+          setDoctorLastSeen(selectedDoctor.id);
+          setUnreadDoctors(prev => ({ ...prev, [selectedDoctor.id]: false }));
+          clearUnreadFlag();
+        }
+      };
+
+      WebSocketService.onMessage(messageCallbackRef.current);
+    }
+
+    return () => {
+      if (messageCallbackRef.current) {
+        WebSocketService.removeMessageCallback(messageCallbackRef.current);
+      }
+      WebSocketService.disconnect();
+    };
   }, []);
 
   // Periodically check for new doctor messages
@@ -109,10 +152,14 @@ const ContactDoctor = () => {
   useEffect(() => {
     if (!selectedDoctor) return;
 
+    let isMounted = true;
     const fetchMessages = async () => {
+      if (!isMounted) return;
       try {
         setLoading(true);
         const response = await getChatMessages(selectedDoctor.id);
+        if (!isMounted) return;
+
         const msgs = response.data || [];
         setMessages(msgs.map((msg, index) => ({
           id: index + 1,
@@ -128,14 +175,20 @@ const ContactDoctor = () => {
         setUnreadDoctors((prev) => ({ ...prev, [selectedDoctor.id]: false }));
         clearUnreadFlag();
       } catch {
-        // If no messages exist yet, start with empty array
+        if (!isMounted) return;
         setMessages([]);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchMessages();
+    const intervalId = setInterval(fetchMessages, 10000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
   }, [selectedDoctor]);
 
   const handleSendMessage = async () => {
@@ -151,25 +204,37 @@ const ContactDoctor = () => {
     setMessages(prev => [...prev, userMessage]);
     const messageToSend = newMessage;
     setNewMessage('');
-    setLoading(true);
+    setSending(true);
 
     try {
-      await sendChatMessage(selectedDoctor.id, { message: messageToSend });
-
-      // Fetch updated messages to get doctor's response
-      const response = await getChatMessages(selectedDoctor.id);
-      setMessages(response.data.map((msg, index) => ({
-        id: index + 1,
-        sender: msg.sender_type === 'client' ? 'You' : 'Doctor',
-        text: msg.message,
-        timestamp: new Date(msg.created_at).toLocaleTimeString()
-      })));
+      if (isConnected) {
+        // Use WebSocket for real-time messaging
+        WebSocketService.sendMessage(selectedDoctor.id, messageToSend, 'client');
+        // Still fetch to ensure message is saved and displayed correctly
+        const response = await getChatMessages(selectedDoctor.id);
+        setMessages(response.data.map((msg, index) => ({
+          id: index + 1,
+          sender: msg.sender_type === 'client' ? 'You' : 'Doctor',
+          text: msg.message,
+          timestamp: new Date(msg.created_at).toLocaleTimeString()
+        })));
+      } else {
+        // Fallback to HTTP
+        await sendChatMessage(selectedDoctor.id, { message: messageToSend });
+        const response = await getChatMessages(selectedDoctor.id);
+        setMessages(response.data.map((msg, index) => ({
+          id: index + 1,
+          sender: msg.sender_type === 'client' ? 'You' : 'Doctor',
+          text: msg.message,
+          timestamp: new Date(msg.created_at).toLocaleTimeString()
+        })));
+      }
     } catch {
       setError('Failed to send message. Please try again.');
       // Remove the message from UI if sending failed
       setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
     } finally {
-      setLoading(false);
+      setSending(false);
     }
   };
 
@@ -215,11 +280,16 @@ const ContactDoctor = () => {
               <h4 className="mb-0">
                 {selectedDoctor ? `Chat with Dr. ${selectedDoctor.name}` : 'Select a Doctor'}
               </h4>
-              {selectedDoctor && (
-                <Button variant="outline-light" size="sm" onClick={handleBackToSelection}>
-                  Change Doctor
-                </Button>
-              )}
+              <div className="d-flex align-items-center">
+                <small className={`me-2 ${isConnected ? 'text-light' : 'text-warning'}`}>
+                  {isConnected ? '🟢 Live' : '🟡 Polling'}
+                </small>
+                {selectedDoctor && (
+                  <Button variant="outline-light" size="sm" onClick={handleBackToSelection}>
+                    Change Doctor
+                  </Button>
+                )}
+              </div>
             </Card.Header>
             <Card.Body>
               {error && <Alert variant="danger">{error}</Alert>}
@@ -298,7 +368,7 @@ const ContactDoctor = () => {
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           onKeyPress={handleKeyPress}
-                          disabled={loading}
+                          disabled={sending}
                         />
                       </Col>
                       <Col md={3}>
@@ -306,7 +376,7 @@ const ContactDoctor = () => {
                           type="submit"
                           variant="primary"
                           className="w-100"
-                          disabled={!newMessage.trim() || loading}
+                          disabled={!newMessage.trim() || sending}
                         >
                           Send
                         </Button>

@@ -104,6 +104,7 @@ const NavBar = () => {
             <Nav.Link as={NavLink} to="/learn" className="fs-5 text-white">Learn</Nav.Link>
             <Nav.Link as={NavLink} to="/about" className="fs-5 text-white">About</Nav.Link>
             <Nav.Link as={NavLink} to="/ai" className="fs-5 text-white">AI</Nav.Link>
+            <Nav.Link as={NavLink} to="/facilities" className="fs-5 text-white">Nearby clinics</Nav.Link>
             {token && <Nav.Link as={NavLink} to="/dashboard" className="fs-5 text-white">Dashboard</Nav.Link>}
             {token && role === 'client' && (
               <Nav.Link as={NavLink} to="/contact-doctor" className="fs-5 text-white">

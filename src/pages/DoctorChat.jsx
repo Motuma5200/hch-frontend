@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, Card, Form, Button, ListGroup, Alert, Spinner, Badge } from 'react-bootstrap';
 import { getClients, getChatMessages, sendDoctorMessage } from '../services/Api';
+import WebSocketService from '../services/WebSocketService';
 
 const DoctorChat = () => {
   const [clients, setClients] = useState([]);
@@ -8,9 +9,13 @@ const DoctorChat = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
   const [fetchingClients, setFetchingClients] = useState(true);
   const [error, setError] = useState('');
   const [unreadClients, setUnreadClients] = useState({});
+  const [isConnected, setIsConnected] = useState(false);
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const messageCallbackRef = useRef(null);
 
   const getClientLastSeen = (clientId) => {
     const raw = localStorage.getItem(`doctor_chat_last_seen_${clientId}`);
@@ -45,15 +50,57 @@ const DoctorChat = () => {
     };
 
     fetchClients();
+
+    // Connect to WebSocket
+    if (user.id) {
+      WebSocketService.connect(user.id, 'doctor');
+
+      // Handle connection status
+      WebSocketService.onConnectionChange((connected) => {
+        setIsConnected(connected);
+      });
+
+      // Handle incoming messages
+      messageCallbackRef.current = (data) => {
+        if (data.sender_type === 'client' && data.sender_id === selectedClient?.id) {
+          // Add new message to chat
+          const newMsg = {
+            id: Date.now(),
+            sender: 'Client',
+            text: data.message,
+            timestamp: new Date().toLocaleTimeString(),
+          };
+          setMessages(prev => [...prev, newMsg]);
+
+          // Mark as read
+          setClientLastSeen(selectedClient.id);
+          setUnreadClients(prev => ({ ...prev, [selectedClient.id]: false }));
+          setDoctorNewClientMessageFlag(false);
+        }
+      };
+
+      WebSocketService.onMessage(messageCallbackRef.current);
+    }
+
+    return () => {
+      if (messageCallbackRef.current) {
+        WebSocketService.removeMessageCallback(messageCallbackRef.current);
+      }
+      WebSocketService.disconnect();
+    };
   }, []);
 
   useEffect(() => {
     if (!selectedClient) return;
 
+    let isMounted = true;
     const fetchMessages = async () => {
+      if (!isMounted) return;
       try {
         setLoading(true);
         const response = await getChatMessages(selectedClient.id);
+        if (!isMounted) return;
+
         setMessages(
           response.data.map((msg, index) => ({
             id: index + 1,
@@ -74,14 +121,21 @@ const DoctorChat = () => {
         setUnreadClients((prev) => ({ ...prev, [selectedClient.id]: false }));
         setDoctorNewClientMessageFlag(false);
       } catch (err) {
+        if (!isMounted) return;
         console.error('Error fetching messages:', err);
         setMessages([]);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchMessages();
+    const intervalId = setInterval(fetchMessages, 10000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
   }, [selectedClient]);
 
   useEffect(() => {
@@ -151,26 +205,42 @@ const DoctorChat = () => {
     setMessages((prev) => [...prev, userMessage]);
     const messageToSend = newMessage;
     setNewMessage('');
-    setLoading(true);
+    setSending(true);
 
     try {
-      await sendDoctorMessage(selectedClient.id, { message: messageToSend });
-      const response = await getChatMessages(selectedClient.id);
-      setMessages(
-        response.data.map((msg, index) => ({
-          id: index + 1,
-          sender: msg.sender_type === 'doctor' ? 'You' : 'Client',
-          text: msg.message,
-          timestamp: new Date(msg.created_at).toLocaleTimeString(),
-        }))
-      );
-      setLastSeen(selectedClient.id);
+      if (isConnected) {
+        // Use WebSocket for real-time messaging
+        WebSocketService.sendMessage(selectedClient.id, messageToSend, 'doctor');
+        // Still fetch to ensure message is saved and displayed correctly
+        const response = await getChatMessages(selectedClient.id);
+        setMessages(
+          response.data.map((msg, index) => ({
+            id: index + 1,
+            sender: msg.sender_type === 'doctor' ? 'You' : 'Client',
+            text: msg.message,
+            timestamp: new Date(msg.created_at).toLocaleTimeString(),
+          }))
+        );
+      } else {
+        // Fallback to HTTP
+        await sendDoctorMessage(selectedClient.id, { message: messageToSend });
+        const response = await getChatMessages(selectedClient.id);
+        setMessages(
+          response.data.map((msg, index) => ({
+            id: index + 1,
+            sender: msg.sender_type === 'doctor' ? 'You' : 'Client',
+            text: msg.message,
+            timestamp: new Date(msg.created_at).toLocaleTimeString(),
+          }))
+        );
+      }
+      setClientLastSeen(selectedClient.id);
     } catch (err) {
       setError('Failed to send message. Please try again.');
       console.error('Error sending message:', err);
       setMessages((prev) => prev.filter((msg) => msg.id !== userMessage.id));
     } finally {
-      setLoading(false);
+      setSending(false);
     }
   };
 
@@ -184,7 +254,7 @@ const DoctorChat = () => {
   const handleClientSelect = (client) => {
     setSelectedClient(client);
     setError('');
-    setLastSeen(client.id);
+    setClientLastSeen(client.id);
   };
 
   const handleBackToSelection = () => {
@@ -213,11 +283,16 @@ const DoctorChat = () => {
               <h4 className="mb-0">
                 {selectedClient ? `Chat with ${selectedClient.name}` : 'Select a Client'}
               </h4>
-              {selectedClient && (
-                <Button variant="outline-light" size="sm" onClick={handleBackToSelection}>
-                  Change Client
-                </Button>
-              )}
+              <div className="d-flex align-items-center">
+                <small className={`me-2 ${isConnected ? 'text-light' : 'text-warning'}`}>
+                  {isConnected ? '🟢 Live' : '🟡 Polling'}
+                </small>
+                {selectedClient && (
+                  <Button variant="outline-light" size="sm" onClick={handleBackToSelection}>
+                    Change Client
+                  </Button>
+                )}
+              </div>
             </Card.Header>
             <Card.Body>
               {error && <Alert variant="danger">{error}</Alert>}
@@ -293,7 +368,7 @@ const DoctorChat = () => {
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           onKeyPress={handleKeyPress}
-                          disabled={loading}
+                          disabled={sending}
                         />
                       </Col>
                       <Col md={3}>
@@ -301,7 +376,7 @@ const DoctorChat = () => {
                           type="submit"
                           variant="success"
                           className="w-100"
-                          disabled={!newMessage.trim() || loading}
+                          disabled={!newMessage.trim() || sending}
                         >
                           Send
                         </Button>
