@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Tabs, Tab, Card, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Tabs, Tab, Card, Alert, Button, Badge } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom'; 
 import HealthDataInput from '../components/health/HealthDataInput';
 import SymptomInput from '../components/health/SymptomInput';
@@ -25,8 +25,30 @@ const UserDashboard = () => {
 
     // Keep users on this unified Dashboard; rendering below decides what to show per role
   }, []);
+
   // Key to force child components to refresh when data is recorded
   const [refreshToggle, setRefreshToggle] = useState(0);
+
+  const [hasNewDoctorMessage, setHasNewDoctorMessage] = useState(false);
+
+  useEffect(() => {
+    const updateFlag = () => {
+      setHasNewDoctorMessage(!!localStorage.getItem('client_has_new_doctor_message'));
+    };
+
+    updateFlag();
+    window.addEventListener('storage', updateFlag);
+    window.addEventListener('doctorMessageUpdate', updateFlag);
+    return () => {
+      window.removeEventListener('storage', updateFlag);
+      window.removeEventListener('doctorMessageUpdate', updateFlag);
+    };
+  }, []);
+
+  const clearDoctorNotification = () => {
+    localStorage.removeItem('client_has_new_doctor_message');
+    window.dispatchEvent(new CustomEvent('doctorMessageUpdate'));
+  };
 
   const handleRefresh = () => {
     setRefreshToggle(prev => prev + 1);
@@ -49,10 +71,27 @@ const UserDashboard = () => {
 
       {(!user || user.role === 'client') && (
         <>
-          <div className="mb-4" style={{ paddingTop: '90px' }}>
-            <h2 className="fw-bold">Health Dashboard</h2>
-            <p className="text-muted">Monitor and track your health metrics and symptoms</p>
+          <div className="mb-4 d-flex justify-content-between align-items-center" style={{ paddingTop: '90px' }}>
+            <div>
+              <h2 className="fw-bold">Health Dashboard</h2>
+              <p className="text-muted">Monitor and track your health metrics and symptoms</p>
+            </div>
+            <Button
+              variant="primary"
+              onClick={() => {
+                clearDoctorNotification();
+                navigate('/contact-doctor');
+              }}
+            >
+              Contact Doctor
+              {hasNewDoctorMessage && (
+                <Badge bg="danger" pill className="ms-2">
+                  New
+                </Badge>
+              )}
+            </Button>
           </div>
+          
 
           <Tabs defaultActiveKey="status" id="dashboard-tabs" className="mb-4">
             <Tab eventKey="status" title="Current Status">

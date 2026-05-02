@@ -15,6 +15,13 @@ api.interceptors.request.use(async (config) => {
     // You can add a check if XSRF-TOKEN cookie exists, but simplest is always fetch
     await axios.get('http://localhost:8000/sanctum/csrf-cookie', { withCredentials: true });
   }
+
+  // Add authorization header if token exists
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
   return config;
 });
 
@@ -44,3 +51,12 @@ export const updateDoctorProfile = (doctorId, payload) => api.put(`/api/doctors/
 
 export const getAdvices = (doctorId) => api.get(`/api/doctors/${doctorId}/advices`);
 export const addAdvice = (doctorId, payload) => api.post(`/api/doctors/${doctorId}/advices`, payload);
+
+// Client-specific endpoints
+export const getDoctors = () => api.get('/api/doctors');
+export const sendChatMessage = (doctorId, payload) => api.post(`/api/chat/messages/${doctorId}`, payload);
+export const getChatMessages = (doctorId) => api.get(`/api/chat/messages/${doctorId}`);
+
+// Doctor chat endpoints
+export const getClients = () => api.get('/api/chat/clients');
+export const sendDoctorMessage = (userId, payload) => api.post(`/api/chat/doctor/messages/${userId}`, payload);

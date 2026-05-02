@@ -18,6 +18,7 @@ import PharmacyAdminDashboard from './pages/PharmacyAdminDashboard';
 import ClientDashboard from './pages/ClientDashboard';
 import Approvals from './pages/Approvals';
 import ProtectedRoute from './components/ProtectedRoute';
+import ContactDoctor from './pages/ContactDoctor';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
           <Route path="/pharmacy" element={<ProtectedRoute roles={["pharmacy_admin"]} element={<PharmacyAdminDashboard/>} />} />
           <Route path="/client" element={<ProtectedRoute roles={["client"]} element={<ClientDashboard/>} />} />
           <Route path="/approvals" element={<ProtectedRoute roles={["admin"]} element={<Approvals/>} />} />
+          <Route path="/contact-doctor" element={<ProtectedRoute roles={["client"]} element={<ContactDoctor/>} />} />
           <Route path="/health" element={<UserDashboard />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/ai" element={<Ask/>} />

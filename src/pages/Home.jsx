@@ -35,12 +35,14 @@ export default function Home() {
             >
               Chat with AI
             </NavLink>
-            <NavLink 
-              to="/login" 
-              className="btn btn-light btn-lg px-5 py-3 fw-bold"
-            >
-              Log In
-            </NavLink>
+            {!localStorage.getItem('token') && (
+              <NavLink 
+                to="/login" 
+                className="btn btn-light btn-lg px-5 py-3 fw-bold"
+              >
+                Log In
+              </NavLink>
+            )}
           </div>
         </div>
       </section>

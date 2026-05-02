@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Row, Col, Badge, Spinner, Alert, Button } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 
 const HealthStatusDashboard = () => {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const fetchHealthStatus = useCallback(async () => {
     try {
@@ -78,6 +80,7 @@ const HealthStatusDashboard = () => {
       {(!status?.metrics_status || Object.keys(status.metrics_status).length === 0) && (
         <Alert variant="info" className="mt-3">No data recorded yet. Use the "Record Data" tab to start.</Alert>
       )}
+      
     </div>
   );
 };
