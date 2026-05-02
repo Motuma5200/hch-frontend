@@ -10,6 +10,7 @@ import Learn from './pages/Learn';
 import TutorialDetail from './pages/TutorialDetail';
 import Ask from './pages/Ask'
 import NavBar from './components/NavBar'; // Updated import to match file name
+import Footer from './components/Footer';
 import Signup from './pages/Signup';
 import Home from './pages/Home';
 import AdminDashboard from './pages/AdminDashboard';
@@ -19,6 +20,7 @@ import ClientDashboard from './pages/ClientDashboard';
 import Approvals from './pages/Approvals';
 import ProtectedRoute from './components/ProtectedRoute';
 import HospitalMap from './pages/HospitalMap';
+
 
 function App() {
   return (
@@ -43,6 +45,7 @@ function App() {
           <Route path="/learn/:id" element={<TutorialDetail />} />
           <Route path="facilities" element={<HospitalMap />} />
         </Routes>
+        <Footer />
       </div>
     </Router>
   );

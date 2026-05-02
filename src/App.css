@@ -40,3 +40,26 @@
   padding: 1rem 0;
   border-bottom: 1px solid #dee2e6;
 }
+
+/* Footer Link Visibility Fix */
+footer.bg-dark .text-muted {
+  color: #adb5bd !important; /* Forces a light gray that is visible on dark backgrounds */
+}
+
+footer.bg-dark .hover-link {
+  color: #adb5bd !important;
+  transition: color 0.3s ease;
+}
+
+/* Ensure links turn bright white or primary blue on hover */
+footer.bg-dark .hover-link:hover {
+  color: #ffffff !important; 
+  text-decoration: underline !important;
+}
+
+/* Fix for the "Stay Updated" text which might be inheriting dark colors */
+footer.bg-dark h4, 
+footer.bg-dark h6, 
+footer.bg-dark p {
+  color: #ffffff !important;
+}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Container, Row, Col, Card, Button, ButtonGroup } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // Added useNavigate for the button
 
 // Import thumbnails from assets
 import thumbnail1 from '../assets/thumbnail1.png';
@@ -11,6 +11,7 @@ import thumbnail5 from '../assets/thumbnail5.png';
 
 const Learn = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const navigate = useNavigate(); // Hook to handle navigation
 
   const tips = [
     {
@@ -127,9 +128,13 @@ const Learn = () => {
                 <Card.Body className="d-flex flex-column">
                   <Card.Title>{tip.title}</Card.Title>
                   <Card.Text className="flex-grow-1">{tip.description}</Card.Text>
-                  <div className="mt-auto">
+                  <div className="mt-auto d-flex justify-content-between">
                     <Button variant="primary" className="me-2" onClick={(e) => { e.preventDefault(); window.open(tip.videoUrl, '_blank'); }}>
                       Watch Video
+                    </Button>
+                    {/* Added Read More Button */}
+                    <Button variant="outline-secondary" onClick={(e) => { e.preventDefault(); navigate(`/learn/${tip.id}`); }}>
+                      Read More
                     </Button>
                   </div>
                 </Card.Body>

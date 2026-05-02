@@ -204,7 +204,7 @@ const HospitalMap = () => {
     }
   };
 
-  if (loading) return <div className="text-center p-5">Loading hospitals...</div>;
+  if (loading) return <div style={{paddingTop:'100px',textAlign:'center'}}>Loading hospitals...</div>;
   if (error) return <div className="text-danger text-center p-5">{error}</div>;
 
   return (
