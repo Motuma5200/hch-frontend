@@ -18,11 +18,8 @@ import PharmacyAdminDashboard from './pages/PharmacyAdminDashboard';
 import ClientDashboard from './pages/ClientDashboard';
 import Approvals from './pages/Approvals';
 import ProtectedRoute from './components/ProtectedRoute';
-<<<<<<< HEAD
 import ContactDoctor from './pages/ContactDoctor';
-=======
 import HospitalMap from './pages/HospitalMap';
->>>>>>> b10440976f774e3c43b949e3c7fc4232d9da796f
 
 function App() {
   return (

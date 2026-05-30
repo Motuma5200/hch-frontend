@@ -1,6 +1,6 @@
 // HospitalMap.jsx
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -76,8 +76,8 @@ const HospitalMap = () => {
   const [error, setError] = useState(null);
   const [radiusKm] = useState(50);
   const [locationMessage, setLocationMessage] = useState('');
+  const [map, setMap] = useState(null);
 
-  const mapRef = useRef(null);
   const defaultCenter = [9.0300, 38.7400]; // Addis Ababa fallback
 
   // IP-based location fallback
@@ -91,8 +91,8 @@ const HospitalMap = () => {
         setUserPosition(approxPos);
         setLocationMessage(`Approximate location detected: ${data.city || 'your area'}`);
 
-        if (mapRef.current) {
-          mapRef.current.flyTo([approxPos.lat, approxPos.lng], 10);
+        if (map) {
+          map.flyTo([approxPos.lat, approxPos.lng], 10);
         }
       } else {
         setLocationMessage('Could not detect location automatically.');
@@ -115,8 +115,8 @@ const HospitalMap = () => {
           setUserPosition(newPos);
           setLocationMessage('Using your precise location');
 
-          if (mapRef.current) {
-            mapRef.current.flyTo([newPos.lat, newPos.lng], 14);
+          if (map) {
+            map.flyTo([newPos.lat, newPos.lng], 14);
           }
         },
         (err) => {
@@ -187,8 +187,8 @@ const HospitalMap = () => {
         setUserPosition(newPos);
         setLocationMessage('Using your precise location');
 
-        if (mapRef.current) {
-          mapRef.current.flyTo([newPos.lat, newPos.lng], 14);
+        if (map) {
+          map.flyTo([newPos.lat, newPos.lng], 14);
         }
       },
       (err) => alert('Unable to get location: ' + err.message),
@@ -199,8 +199,8 @@ const HospitalMap = () => {
   const handleMapClick = (latlng) => {
     setUserPosition(latlng);
     setLocationMessage('Custom location selected on map');
-    if (mapRef.current) {
-      mapRef.current.flyTo([latlng.lat, latlng.lng], 14);
+    if (map) {
+      map.flyTo([latlng.lat, latlng.lng], 14);
     }
   };
 
@@ -219,7 +219,7 @@ const HospitalMap = () => {
                 center={defaultCenter}
                 zoom={12}
                 style={{ height: '500px', width: '100%' }}
-                ref={mapRef}
+                whenCreated={setMap}
               >
                 <TileLayer
                   attribution='&copy; OpenStreetMap contributors'
@@ -286,8 +286,8 @@ const HospitalMap = () => {
               onClick={() => {
                 setUserPosition(null);
                 setLocationMessage('');
-                if (mapRef.current) {
-                  mapRef.current.flyTo(defaultCenter, 12);
+                if (map) {
+                  map.flyTo(defaultCenter, 12);
                 }
               }}
               className="btn btn-outline-secondary"
