@@ -46,45 +46,65 @@ const Login = () => {
   };
 
   return (
+    /* Applied bg-light here so the card contrasts perfectly against the backdrop layout */
     <Container 
-      className="d-flex align-items-center justify-content-center" 
-      style={{ minHeight: '80vh',
-         paddingTop: '90px'  // 
-       }}
+      fluid
+      className="d-flex align-items-center justify-content-center bg-light" 
+      style={{ 
+        minHeight: '100vh',
+        paddingTop: '90px'
+      }}
     >
-      <Card style={{ width: '400px' }} className="shadow-sm border-0">
-        <Card.Body className="p-4">
-          <h2 className="text-center mb-4 fw-bold text-primary">Login</h2>
+      {/* Kept your exact styles matched with the signup component */}
+      <style>{`
+        .custom-form-input {
+          border-bottom: 3px solid #0d6efd !important;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .custom-form-input:focus {
+          border-color: #0d6efd !important;
+          box-shadow: 0 4px 10px -2px rgba(13, 110, 253, 0.25) !important;
+          transform: translateY(-1px);
+        }
+      `}</style>
 
-          {error && <Alert variant="danger">{error}</Alert>}
+      {/* Boosted drop-shadow to match the premium, professional UI depth */}
+      <Card style={{ width: '420px' }} className="shadow border-0 rounded-4 my-5 bg-white">
+        <Card.Body className="p-4 p-md-5">
+          <h2 className="text-center mb-4 fw-bold text-primary" style={{ letterSpacing: '0.5px' }}>Login</h2>
+
+          {error && <Alert variant="danger" className="rounded-3">{error}</Alert>}
 
           <Form onSubmit={handleLogin}>
-            <Form.Group className="mb-3">
-              <Form.Label>Email Address</Form.Label>
+            <Form.Group className="mb-4">
+              <Form.Label className="small fw-semibold text-secondary">Email Address</Form.Label>
               <Form.Control 
                 type="email" 
-                placeholder="Enter email" 
+                placeholder="Enter your email address" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required 
+                className="custom-form-input py-2 px-3"
               />
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Password</Form.Label>
+              <Form.Label className="small fw-semibold text-secondary">Password</Form.Label>
               <Form.Control 
-                type="password" 
-                placeholder="Password" 
+                type="text" 
+                placeholder="Enter your password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required 
+                className="custom-form-input py-2 px-3"
               />
             </Form.Group>
 
             <div className="text-end mb-4">
               <Link 
                 to="/forgot-password" 
-                className="text-muted text-decoration-none small"
+                className="text-muted text-decoration-none small hover-primary"
+                style={{ transition: 'color 0.2s' }}
               >
                 Forgot password?
               </Link>
@@ -93,18 +113,19 @@ const Login = () => {
             <Button 
               variant="primary" 
               type="submit" 
-              className="w-100 py-2 fw-bold"
+              className="w-100 py-25 fw-bold shadow-sm rounded-3"
+              style={{ transition: 'all 0.2s' }}
             >
               Sign In
             </Button>
           </Form>
 
-          <div className="text-center mt-4">
-            <p className="text-muted mb-0">
+          <div className="text-center mt-4 small">
+            <p className="text-secondary mb-0">
               Don't have an account?{' '}
               <Link 
                 to="/signup" 
-                className="text-primary fw-semibold text-decoration-none"
+                className="text-primary fw-semibold text-decoration-none ms-1"
               >
                 Sign up
               </Link>
