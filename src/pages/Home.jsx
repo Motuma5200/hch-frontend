@@ -1,51 +1,84 @@
 import { NavLink } from 'react-router-dom';
-import heroImage from '../assets/hero-1.avif'
+import heroImage from '../assets/background2.jpg'
 
 export default function Home() {
   return (
     <div>
       {/* Hero Section */}
-      <section 
-        className="bg-primary text-white text-center py-5" 
-        style={{
-          backgroundImage: `linear-gradient(rgba(13, 109, 253, 0.33), rgba(12, 87, 199, 0.43)), url(${heroImage})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          minHeight: '90vh',
-          display: 'flex',
-          alignItems: 'center'
+ <section 
+  className="text-center py-5 position-relative"
+  style={{
+    backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.55)), url(${heroImage})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    minHeight: '88vh',
+    display: 'flex',
+    alignItems: 'center',
+  }}
+>
+  <div className="container">
+    <h1 
+      className="display-3 fw-bold mb-4"
+      style={{
+        color: '#FFFFFF',
+        textShadow: '0 4px 25px rgba(0, 0, 0, 0.5)'
+      }}
+    >
+      Your Health, Your Wealth
+    </h1>
+    
+    {/* Blurred Background Container for Paragraph */}
+    <div 
+      className="mx-auto mb-5 p-4 rounded-4"
+      style={{
+        backgroundColor: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(12px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        maxWidth: '820px',
+      }}
+    >
+      <p 
+        className="lead fs-4 mb-0"
+        style={{ 
+          color: '#F0F4FF',
+          fontWeight: '500',
+          lineHeight: '1.5'
         }}
       >
-        <div className="container">
-          <h1 className="display-3 fw-bold mb-3">
-            Your Health, Your Control
-          </h1>
-          
-          <p className="lead fs-4 mb-4 col-md-10 mx-auto">
-  <strong>
-    Empowering you with smart tracking, personalized insights, nutrition guidance, nearby clinic discovery, and direct AI-powered medical conversations — all in one place.
-  </strong>
-</p>
+        Empowering you with smart tracking, personalized insights, nutrition guidance, 
+        nearby clinic discovery, and direct AI-powered medical conversations — all in one place.
+      </p>
+    </div>
 
-
-          <div className="d-flex justify-content-center gap-3 flex-wrap">
-            <NavLink 
-              to="/ai" 
-              className="btn btn-light btn-lg px-5 py-3 fw-bold shadow"
-            >
-              Chat with AI
-            </NavLink>
-            {!localStorage.getItem('token') && (
-              <NavLink 
-                to="/login" 
-                className="btn btn-light btn-lg px-5 py-3 fw-bold"
-              >
-                Log In
-              </NavLink>
-            )}
-          </div>
-        </div>
-      </section>
+    <div className="d-flex justify-content-center gap-3 flex-wrap">
+      <NavLink 
+        to="/ai" 
+        className="btn btn-lg px-5 py-3 fw-bold shadow-lg"
+        style={{
+          background: 'linear-gradient(135deg, #00F5D4, #14B8A6)',
+          color: '#0F172A',
+          border: 'none',
+        }}
+      >
+        Chat with AI Assistant
+      </NavLink>
+      
+      {!localStorage.getItem('token') && (
+        <NavLink 
+          to="/login" 
+          className="btn btn-lg px-5 py-3 fw-bold shadow-lg"
+          style={{
+            backgroundColor: 'transparent',
+            color: '#FFFFFF',
+            border: '2px solid rgba(255,255,255,0.9)',
+          }}
+        >
+          Get Started
+        </NavLink>
+      )}
+    </div>
+  </div>
+</section>
 
       {/* Features Section */}
       <section className="py-5 bg-light">

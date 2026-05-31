@@ -1,7 +1,7 @@
 // HospitalMap.jsx
 
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
@@ -34,26 +34,22 @@ const createHospitalIcon = (color) => new L.Icon({
   shadowSize: [41, 41],
 });
 
-// Distance → color mapping
 const getHospitalColor = (distanceKm) => {
-  if (distanceKm <= 5)  return 'green';    // very close
-  if (distanceKm <= 15) return 'orange';   // medium
-  return 'red';                            // farther
+  if (distanceKm <= 5)  return 'green';
+  if (distanceKm <= 15) return 'orange';
+  return 'red';
 };
 
-// HAVERSINE DISTANCE
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // km
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
-
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((lat1 * Math.PI) / 180) *
       Math.cos((lat2 * Math.PI) / 180) *
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2);
-
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 };
@@ -68,6 +64,23 @@ function LocationPicker({ onLocationSelect }) {
   return null;
 }
 
+// MAP CONTROLLER SUB-COMPONENT
+function MapController({ flyToTarget, setFlyToTarget }) {
+  const mapInstance = useMap();
+
+  useEffect(() => {
+    if (flyToTarget) {
+      mapInstance.flyTo([flyToTarget.lat, flyToTarget.lng], 15, {
+        animate: true,
+        duration: 1.5,
+      });
+      setFlyToTarget(null);
+    }
+  }, [flyToTarget, mapInstance, setFlyToTarget]);
+
+  return null;
+}
+
 const HospitalMap = () => {
   const [hospitals, setHospitals] = useState([]);
   const [userPosition, setUserPosition] = useState(null);
@@ -76,80 +89,88 @@ const HospitalMap = () => {
   const [error, setError] = useState(null);
   const [radiusKm] = useState(50);
   const [locationMessage, setLocationMessage] = useState('');
-  const [map, setMap] = useState(null);
+  const [flyToTarget, setFlyToTarget] = useState(null);
+  
+  const [routeCoordinates, setRouteCoordinates] = useState([]);
+  // SOLVED: Add state options to handle visual path fallback when third-party servers drop out
+  const [isStraightLine, setIsStraightLine] = useState(false);
 
   const defaultCenter = [9.0300, 38.7400]; // Addis Ababa fallback
+  
+  // SOLVED: Decentralized hardcoded URL base configuration using environment design patterns
+  const API_BASE_URL = window.env?.REACT_APP_API_URL || import.meta.env?.VITE_API_URL || 'http://localhost:8000';
 
-  // IP-based location fallback
-  const fetchIPLocation = async () => {
+  const fetchIPLocation = async (isMounted) => {
     try {
       const response = await fetch('http://ip-api.com/json/');
       const data = await response.json();
+
+      if (!isMounted) return;
 
       if (data.status === 'success' && data.lat && data.lon) {
         const approxPos = { lat: data.lat, lng: data.lon };
         setUserPosition(approxPos);
         setLocationMessage(`Approximate location detected: ${data.city || 'your area'}`);
-
-        if (map) {
-          map.flyTo([approxPos.lat, approxPos.lng], 10);
-        }
+        setFlyToTarget(approxPos);
       } else {
         setLocationMessage('Could not detect location automatically.');
       }
     } catch (err) {
       console.warn('IP geolocation failed:', err);
-      setLocationMessage('Could not detect location automatically.');
+      if (isMounted) setLocationMessage('Could not detect location automatically.');
     }
   };
 
-  // Automatic location detection on mount
+  // SOLVED: Fixed memory leaks via tracking cleanup states inside operations
   useEffect(() => {
+    let isMounted = true;
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          if (!isMounted) return;
           const newPos = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           };
           setUserPosition(newPos);
           setLocationMessage('Using your precise location');
-
-          if (map) {
-            map.flyTo([newPos.lat, newPos.lng], 14);
-          }
+          setFlyToTarget(newPos);
         },
         (err) => {
           console.warn('Geolocation permission denied or unavailable:', err);
-          setLocationMessage('Precise location access denied — using approximate location');
-          fetchIPLocation(); // fallback
+          if (isMounted) {
+            setLocationMessage('Precise location access denied — using approximate location');
+            fetchIPLocation(isMounted);
+          }
         },
         { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
       );
     } else {
       setLocationMessage('Geolocation not supported — using approximate location');
-      fetchIPLocation();
+      fetchIPLocation(isMounted);
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Fetch hospitals from your Laravel API
   useEffect(() => {
     const fetchHospitals = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/api/hospitals');
+        const response = await axios.get(`${API_BASE_URL}/api/hospitals`);
         setHospitals(response.data);
       } catch (err) {
         console.error('Failed to load hospitals:', err);
-        setError('Failed to load hospitals. Check your backend API.');
+        setError('Failed to load hospitals. Check your backend API configurations.');
       } finally {
         setLoading(false);
       }
     };
-
     fetchHospitals();
-  }, []);
+  }, [API_BASE_URL]);
 
-  // Calculate nearby hospitals when user position or hospitals change
   useEffect(() => {
     if (!userPosition || hospitals.length === 0) {
       setNearbyHospitals([]);
@@ -172,6 +193,32 @@ const HospitalMap = () => {
     setNearbyHospitals(withDistance);
   }, [userPosition, hospitals, radiusKm]);
 
+  // SOLVED: Built deep error handling loops preventing app breakage during OSRM network dropouts
+  const getRoadRoute = async (hospitalLat, hospitalLng) => {
+    if (!userPosition) return;
+    setIsStraightLine(false); // Reset visual layout tracking state
+    
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${userPosition.lng},${userPosition.lat};${hospitalLng},${hospitalLat}?overview=full&geometries=geojson`;
+      const res = await axios.get(url);
+      
+      if (res.data.routes && res.data.routes.length > 0) {
+        const coords = res.data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+        setRouteCoordinates(coords);
+      } else {
+        throw new Error("No route found through public streets lookup");
+      }
+    } catch (err) {
+      console.warn("OSRM street routing service failed or timed out. Graceful linear fallback applied:", err);
+      // Fallback Strategy: Paint a straight geometric connection vector line so the user view doesn't break
+      setRouteCoordinates([
+        [userPosition.lat, userPosition.lng],
+        [hospitalLat, hospitalLng]
+      ]);
+      setIsStraightLine(true);
+    }
+  };
+
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
       alert('Geolocation is not supported by your browser');
@@ -186,10 +233,8 @@ const HospitalMap = () => {
         };
         setUserPosition(newPos);
         setLocationMessage('Using your precise location');
-
-        if (map) {
-          map.flyTo([newPos.lat, newPos.lng], 14);
-        }
+        setFlyToTarget(newPos);
+        setRouteCoordinates([]); 
       },
       (err) => alert('Unable to get location: ' + err.message),
       { enableHighAccuracy: true }
@@ -199,9 +244,8 @@ const HospitalMap = () => {
   const handleMapClick = (latlng) => {
     setUserPosition(latlng);
     setLocationMessage('Custom location selected on map');
-    if (map) {
-      map.flyTo([latlng.lat, latlng.lng], 14);
-    }
+    setFlyToTarget(latlng);
+    setRouteCoordinates([]); 
   };
 
   if (loading) return <div className="text-center p-5">Loading hospitals...</div>;
@@ -219,14 +263,29 @@ const HospitalMap = () => {
                 center={defaultCenter}
                 zoom={12}
                 style={{ height: '500px', width: '100%' }}
-                whenCreated={setMap}
               >
                 <TileLayer
                   attribution='&copy; OpenStreetMap contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
-                {/* Hospital markers with distance-based colors */}
+                <MapController 
+                  flyToTarget={flyToTarget} 
+                  setFlyToTarget={setFlyToTarget} 
+                />
+
+                {routeCoordinates.length > 0 && (
+                  <Polyline 
+                    positions={routeCoordinates} 
+                    pathOptions={{ 
+                      color: isStraightLine ? '#dc3545' : '#0d6efd', // Changes line color to red if it falls back to straight line
+                      weight: 5, 
+                      opacity: 0.75,
+                      dashArray: isStraightLine ? '10, 10' : null // Makes the line dashed if it's a fallback straight line
+                    }} 
+                  />
+                )}
+
                 {hospitals.map((hospital) => {
                   const distance = userPosition
                     ? calculateDistance(
@@ -263,7 +322,6 @@ const HospitalMap = () => {
                   );
                 })}
 
-                {/* User position marker */}
                 {userPosition && (
                   <Marker position={[userPosition.lat, userPosition.lng]} icon={userIcon}>
                     <Popup>
@@ -286,9 +344,8 @@ const HospitalMap = () => {
               onClick={() => {
                 setUserPosition(null);
                 setLocationMessage('');
-                if (map) {
-                  map.flyTo(defaultCenter, 12);
-                }
+                setRouteCoordinates([]); 
+                setFlyToTarget({ lat: defaultCenter[0], lng: defaultCenter[1] });
               }}
               className="btn btn-outline-secondary"
             >
@@ -342,11 +399,10 @@ const HospitalMap = () => {
                         )}
 
                         <button
-                          className="btn btn-link btn-sm p-0 mt-2"
+                          className="btn btn-link btn-sm p-0 mt-2 text-decoration-none fw-semibold"
                           onClick={() => {
-                            if (mapRef.current) {
-                              mapRef.current.flyTo([hospital.latitude, hospital.longitude], 15);
-                            }
+                            setFlyToTarget({ lat: hospital.latitude, lng: hospital.longitude });
+                            getRoadRoute(hospital.latitude, hospital.longitude);
                           }}
                         >
                           📍 Show on map

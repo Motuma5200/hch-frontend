@@ -9,7 +9,8 @@ import Login from './pages/Login';
 import Learn from './pages/Learn';
 import TutorialDetail from './pages/TutorialDetail';
 import Ask from './pages/Ask'
-import NavBar from './components/NavBar'; // Updated import to match file name
+import NavBar from './components/NavBar'; 
+import Footer from './components/Footer';
 import Signup from './pages/Signup';
 import Home from './pages/Home';
 import AdminDashboard from './pages/AdminDashboard';
@@ -18,8 +19,10 @@ import PharmacyAdminDashboard from './pages/PharmacyAdminDashboard';
 import ClientDashboard from './pages/ClientDashboard';
 import Approvals from './pages/Approvals';
 import ProtectedRoute from './components/ProtectedRoute';
-import ContactDoctor from './pages/ContactDoctor';
 import HospitalMap from './pages/HospitalMap';
+import DoctorsList from './pages/DoctorsList';
+import DoctorChatWindow from './pages/DoctorChatWindow';
+import About from './components/About';
 
 function App() {
   return (
@@ -31,13 +34,17 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} /> 
           <Route path="/" element={<Home />} /> 
+          <Route path="/about" element={<About />} /> 
           <Route path="/dashboard" element={<UserDashboard />} />
           <Route path="/admin" element={<ProtectedRoute roles={["admin"]} element={<AdminDashboard/>} />} />
           <Route path="/doctor" element={<ProtectedRoute roles={["doctor"]} element={<DoctorDashboard/>} />} />
           <Route path="/pharmacy" element={<ProtectedRoute roles={["pharmacy_admin"]} element={<PharmacyAdminDashboard/>} />} />
           <Route path="/client" element={<ProtectedRoute roles={["client"]} element={<ClientDashboard/>} />} />
           <Route path="/approvals" element={<ProtectedRoute roles={["admin"]} element={<Approvals/>} />} />
-          <Route path="/contact-doctor" element={<ProtectedRoute roles={["client"]} element={<ContactDoctor/>} />} />
+          
+          <Route path="/contact-doctor" element={<ProtectedRoute roles={["client"]} element={<DoctorsList />} />} />
+          <Route path="/chat/doctor/:doctorId" element={<ProtectedRoute roles={["client"]} element={<DoctorChatWindow />} />} />
+
           <Route path="/health" element={<UserDashboard />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/ai" element={<Ask/>} />
@@ -45,6 +52,7 @@ function App() {
           <Route path="/learn/:id" element={<TutorialDetail />} />
           <Route path="facilities" element={<HospitalMap />} />
         </Routes>
+        <Footer />
       </div>
     </Router>
   );
