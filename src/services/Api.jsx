@@ -9,10 +9,9 @@ const api = axios.create({
   },
 });
 
-// Optional: auto-refresh CSRF before mutating requests (very reliable)
+// Auto-refresh CSRF before mutating requests (very reliable)
 api.interceptors.request.use(async (config) => {
   if (['post', 'put', 'patch', 'delete'].includes(config.method)) {
-    // You can add a check if XSRF-TOKEN cookie exists, but simplest is always fetch
     await axios.get('http://localhost:8000/sanctum/csrf-cookie', { withCredentials: true });
   }
 
@@ -29,8 +28,13 @@ export default api;
 
 // Helper API methods for admin and pharmacy actions
 export const getPendingApprovals = () => api.get('/api/admin/pending-approvals');
-export const approveUser = (userId) => api.post(`/api/admin/approve/${userId}`);
-export const rejectUser = (userId) => api.post(`/api/admin/reject/${userId}`);
+
+/**
+ * FIXED: Now accepts the payload argument and forwards it to the Laravel backend!
+ */
+export const approveUser = (userId, payload) => api.post(`/api/admin/approve/${userId}`, payload);
+export const rejectUser = (userId, payload) => api.post(`/api/admin/reject/${userId}`, payload);
+
 export const deleteUser = (userId) => api.delete(`/api/admin/users/${userId}`);
 
 export const getDrugs = (hospitalId) => api.get(`/api/hospitals/${hospitalId}/drugs`);
@@ -53,7 +57,8 @@ export const getAdvices = (doctorId) => api.get(`/api/doctors/${doctorId}/advice
 export const addAdvice = (doctorId, payload) => api.post(`/api/doctors/${doctorId}/advices`, payload);
 
 // Client-specific endpoints
-export const getDoctors = () => api.get('/api/doctors');
+export const getDoctors = () => api.get('/api/client/doctors');
+export const getChatDoctors = () => api.get('/api/doctors');
 export const sendChatMessage = (doctorId, payload) => api.post(`/api/chat/messages/${doctorId}`, payload);
 export const getChatMessages = (doctorId) => api.get(`/api/chat/messages/${doctorId}`);
 
