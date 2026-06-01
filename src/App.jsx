@@ -23,6 +23,9 @@ import HospitalMap from './pages/HospitalMap';
 import DoctorsList from './pages/DoctorsList';
 import DoctorChatWindow from './pages/DoctorChatWindow';
 import About from './components/About';
+import UserProfile from './pages/UserProfile';
+import DoctorProfilePage from './pages/DoctorProfilePage';
+import MessagesInbox from './pages/MessagesInbox';
 
 function App() {
   return (
@@ -41,6 +44,7 @@ function App() {
           <Route path="/pharmacy" element={<ProtectedRoute roles={["pharmacy_admin"]} element={<PharmacyAdminDashboard/>} />} />
           <Route path="/client" element={<ProtectedRoute roles={["client"]} element={<ClientDashboard/>} />} />
           <Route path="/approvals" element={<ProtectedRoute roles={["admin"]} element={<Approvals/>} />} />
+          <Route path="/messages/inbox" element={<MessagesInbox />} />
           
           <Route path="/contact-doctor" element={<ProtectedRoute roles={["client"]} element={<DoctorsList />} />} />
           <Route path="/chat/doctor/:doctorId" element={<ProtectedRoute roles={["client"]} element={<DoctorChatWindow />} />} />
@@ -48,6 +52,8 @@ function App() {
           <Route path="/health" element={<UserDashboard />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/ai" element={<Ask/>} />
+          <Route path="/profile" element={<UserProfile />} />
+          <Route path="/doctor-profile" element={<DoctorProfilePage />} />
           <Route path="/signup" element={<Signup/>} />
           <Route path="/learn/:id" element={<TutorialDetail />} />
           <Route path="facilities" element={<HospitalMap />} />

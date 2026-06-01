@@ -92,12 +92,10 @@ const HospitalMap = () => {
   const [flyToTarget, setFlyToTarget] = useState(null);
   
   const [routeCoordinates, setRouteCoordinates] = useState([]);
-  // SOLVED: Add state options to handle visual path fallback when third-party servers drop out
   const [isStraightLine, setIsStraightLine] = useState(false);
 
   const defaultCenter = [9.0300, 38.7400]; // Addis Ababa fallback
   
-  // SOLVED: Decentralized hardcoded URL base configuration using environment design patterns
   const API_BASE_URL = window.env?.REACT_APP_API_URL || import.meta.env?.VITE_API_URL || 'http://localhost:8000';
 
   const fetchIPLocation = async (isMounted) => {
@@ -121,30 +119,49 @@ const HospitalMap = () => {
     }
   };
 
-  // SOLVED: Fixed memory leaks via tracking cleanup states inside operations
+  // REOPTIMIZED LOCATION DETECTOR
   useEffect(() => {
     let isMounted = true;
 
+    const handleSuccess = (position) => {
+      if (!isMounted) return;
+      const newPos = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      };
+      setUserPosition(newPos);
+      setLocationMessage('Using your precise location');
+      setFlyToTarget(newPos);
+    };
+
+    const handleFailure = (err) => {
+      console.warn('High accuracy geolocation failed:', err);
+      
+      // Fallback Phase 1: Try lower accuracy (faster, uses cell towers/Wi-Fi routers instead of hardware GPS)
+      if (navigator.geolocation && err.code === err.TIMEOUT) {
+        console.log('Retrying with balanced accuracy settings...');
+        navigator.geolocation.getCurrentPosition(
+          handleSuccess,
+          () => {
+            if (isMounted) {
+              setLocationMessage('Precise access failed — using approximate IP location');
+              fetchIPLocation(isMounted);
+            }
+          },
+          { enableHighAccuracy: false, timeout: 5000 }
+        );
+      } else if (isMounted) {
+        setLocationMessage('Location access denied — using approximate IP location');
+        fetchIPLocation(isMounted);
+      }
+    };
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          if (!isMounted) return;
-          const newPos = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setUserPosition(newPos);
-          setLocationMessage('Using your precise location');
-          setFlyToTarget(newPos);
-        },
-        (err) => {
-          console.warn('Geolocation permission denied or unavailable:', err);
-          if (isMounted) {
-            setLocationMessage('Precise location access denied — using approximate location');
-            fetchIPLocation(isMounted);
-          }
-        },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+        handleSuccess,
+        handleFailure,
+        // Change maximumAge to allow cached locations from the browser (e.g., within last 5 mins)
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
       );
     } else {
       setLocationMessage('Geolocation not supported — using approximate location');
@@ -193,10 +210,9 @@ const HospitalMap = () => {
     setNearbyHospitals(withDistance);
   }, [userPosition, hospitals, radiusKm]);
 
-  // SOLVED: Built deep error handling loops preventing app breakage during OSRM network dropouts
   const getRoadRoute = async (hospitalLat, hospitalLng) => {
     if (!userPosition) return;
-    setIsStraightLine(false); // Reset visual layout tracking state
+    setIsStraightLine(false); 
     
     try {
       const url = `https://router.project-osrm.org/route/v1/driving/${userPosition.lng},${userPosition.lat};${hospitalLng},${hospitalLat}?overview=full&geometries=geojson`;
@@ -210,7 +226,6 @@ const HospitalMap = () => {
       }
     } catch (err) {
       console.warn("OSRM street routing service failed or timed out. Graceful linear fallback applied:", err);
-      // Fallback Strategy: Paint a straight geometric connection vector line so the user view doesn't break
       setRouteCoordinates([
         [userPosition.lat, userPosition.lng],
         [hospitalLat, hospitalLng]
@@ -278,10 +293,10 @@ const HospitalMap = () => {
                   <Polyline 
                     positions={routeCoordinates} 
                     pathOptions={{ 
-                      color: isStraightLine ? '#dc3545' : '#0d6efd', // Changes line color to red if it falls back to straight line
+                      color: isStraightLine ? '#dc3545' : '#0d6efd', 
                       weight: 5, 
                       opacity: 0.75,
-                      dashArray: isStraightLine ? '10, 10' : null // Makes the line dashed if it's a fallback straight line
+                      dashArray: isStraightLine ? '10, 10' : null 
                     }} 
                   />
                 )}

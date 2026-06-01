@@ -34,7 +34,7 @@ export default function Ask() {
       console.error(err);
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "❌ Error connecting to the server." },
+        { role: "assistant", content: "❌ Sorry, I couldn't connect to the server." },
       ]);
     } finally {
       setLoading(false);
@@ -51,33 +51,55 @@ export default function Ask() {
         height: "100vh",
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "#f0f2f5",
-        paddingTop: "60px",           // ← adjust this value according to your navbar height
+        backgroundColor: "#f8f9fa",
+        paddingTop: "60px",
       }}
     >
       {/* Header */}
       <div
         style={{
-          backgroundColor: "#0d6efd",
+          backgroundColor: "#1e3a8a", 
           color: "white",
-          padding: "1rem",
-          fontSize: "1.4rem",
-          fontWeight: "bold",
+          padding: "1rem 1.5rem",
+          fontSize: "1.5rem",
+          fontWeight: "600",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          flexShrink: 0,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+        }}
+      >
+        <span>🩺</span>
+        <div>AI - Medical Assistant</div>
+      </div>
+
+      {/* Important Disclaimer */}
+      <div
+        style={{
+          backgroundColor: "#fef3c7",
+          borderLeft: "5px solid #f59e0b",
+          padding: "12px 20px",
+          fontSize: "0.95rem",
+          color: "#92400e",
           flexShrink: 0,
         }}
       >
-        💬 Chat with Medical AI
+        <strong>⚠️ Important Disclaimer:</strong> This AI is for informational purposes only. 
+        It is not a substitute for professional medical advice, diagnosis, or treatment. 
+        Always consult a qualified healthcare provider for medical concerns.
       </div>
 
-      {/* Messages area */}
+      {/* Messages Area */}
       <div
         style={{
           flex: 1,
           overflowY: "auto",
-          padding: "1rem",
+          padding: "1.5rem",
           display: "flex",
           flexDirection: "column",
-          gap: "1rem",
+          gap: "1.2rem",
+          backgroundColor: "#f8f9fa",
         }}
       >
         {messages.length === 0 && !loading && (
@@ -85,14 +107,17 @@ export default function Ask() {
             style={{
               flex: 1,
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              color: "#6c757d",
-              fontSize: "1.1rem",
+              color: "#64748b",
               textAlign: "center",
+              padding: "2rem",
             }}
           >
-            Welcome! Ask any health-related question below.
+            <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🩺</div>
+            <h3>Welcome to Medical AI</h3>
+            <p>Ask me anything about health, symptoms, or medical information.</p>
           </div>
         )}
 
@@ -101,19 +126,18 @@ export default function Ask() {
             key={index}
             style={{
               alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-              maxWidth: "80%",
-              marginBottom: "0.5rem",
+              maxWidth: "75%",
             }}
           >
             <div
               style={{
-                backgroundColor:
-                  msg.role === "user" ? "#0d6efd" : "white",
-                color: msg.role === "user" ? "white" : "#212529",
-                borderRadius: "12px",
-                padding: "0.9rem 1.2rem",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-                lineHeight: "1.45",
+                backgroundColor: msg.role === "user" ? "#1e40af" : "#ffffff",
+                color: msg.role === "user" ? "white" : "#1f2937",
+                borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                padding: "14px 18px",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+                lineHeight: "1.5",
+                border: msg.role === "assistant" ? "1px solid #e2e8f0" : "none",
               }}
             >
               {msg.content}
@@ -126,36 +150,35 @@ export default function Ask() {
             style={{
               alignSelf: "flex-start",
               backgroundColor: "white",
-              borderRadius: "12px",
-              padding: "0.9rem 1.2rem",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-              color: "#6c757d",
+              borderRadius: "18px 18px 18px 4px",
+              padding: "14px 18px",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+              color: "#64748b",
+              border: "1px solid #e2e8f0",
             }}
           >
-            ⏳ Thinking…
+            🧠 AI is thinking...
           </div>
         )}
 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input area – centered and limited width */}
+      {/* Input Area */}
       <div
         style={{
-          padding: "1rem",
+          padding: "1.2rem 1.5rem",
           backgroundColor: "white",
-          borderTop: "1px solid #dee2e6",
+          borderTop: "1px solid #e2e8f0",
           flexShrink: 0,
-          display: "flex",
-          justifyContent: "center",
         }}
       >
         <div
           style={{
             display: "flex",
-            gap: "0.6rem",
-            width: "100%",
-            maxWidth: "720px",           // ← this is the main control value
+            gap: "10px",
+            maxWidth: "800px",
+            margin: "0 auto",
           }}
         >
           <input
@@ -168,29 +191,31 @@ export default function Ask() {
                 handleSend();
               }
             }}
-            placeholder="Ask your medical question..."
+            placeholder="Type your medical question here..."
             disabled={loading}
             style={{
               flex: 1,
-              padding: "0.8rem 1rem",
-              border: "1px solid #ced4da",
-              borderRadius: "8px",
-              fontSize: "1rem",
+              padding: "14px 18px",
+              border: "1px solid #cbd5e1",
+              borderRadius: "12px",
+              fontSize: "1.02rem",
               outline: "none",
+              transition: "border 0.2s",
             }}
           />
           <button
             onClick={handleSend}
             disabled={loading || !question.trim()}
             style={{
-              padding: "0.8rem 1.6rem",
-              backgroundColor: "#0d6efd",
+              padding: "0 28px",
+              backgroundColor: "#1e40af",
               color: "white",
               border: "none",
-              borderRadius: "8px",
-              fontWeight: "500",
+              borderRadius: "12px",
+              fontWeight: "600",
               cursor: loading || !question.trim() ? "not-allowed" : "pointer",
-              opacity: loading || !question.trim() ? 0.6 : 1,
+              opacity: loading || !question.trim() ? 0.7 : 1,
+              transition: "all 0.2s",
             }}
           >
             Send
