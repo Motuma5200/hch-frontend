@@ -19,6 +19,17 @@ const AdminDashboard = () => {
     phone: '', email: '', latitude: '', longitude: '', specialties: ''
   });
 
+  // Form State: Create Content (Matching the JSON specification)
+  const [showContentModal, setShowContentModal] = useState(false);
+  const [contentForm, setContentForm] = useState({
+    title: '',
+    description: '',
+    image: null,       // Handles thumbnail file assets
+    videoUrl: '',
+    category: 'general',
+    detail: ''
+  });
+
   // Doctor Credentialing State (Built into Approval Process)
   const [showDocModal, setShowDocModal] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
@@ -70,22 +81,19 @@ const AdminDashboard = () => {
     setLoadingUsers(true);
     try {
       const resp = await api.get('/api/admin/users');
-      setHospitals(resp.data || []); // Note: verify if this should be setUsers(resp.data) based on your api structure
+      setUsers(resp.data || []);
     } catch (err) {
       console.error(err);
       triggerToast('Failed to load system users', 'danger');
     } finally { setLoadingUsers(false); }
   };
 
-  // Route Approval Operations
   const handleActionClick = (user, actionType) => {
     if (actionType === 'approve' && user.role === 'doctor') {
-      // Direct Doctors through the specialized initialization credentials form overlay
       setSelectedDoctor(user);
       setDocCredentials({ licenseNo: '', npi: '', specialization: 'General Practitioner', experienceYears: 5, videoFee: 75.00 });
       setShowDocModal(true);
     } else {
-      // General patients or pharmacy admins use standard validation confirmation
       setConfirmModal({ show: true, id: user.id, action: actionType, role: user.role });
     }
   };
@@ -95,7 +103,6 @@ const AdminDashboard = () => {
     setConfirmModal({ show: false, id: null, action: null, role: null });
     try {
       if (action === 'approve') {
-        // Patients and standard roles simply get updated to approved without additional profile JSON
         await approveUser(id, { approved: true });
       }
       if (action === 'reject') await rejectUser(id);
@@ -108,15 +115,11 @@ const AdminDashboard = () => {
     }
   };
 
-  /**
-   * UPDATED: Sends BOTH `approved: true` AND the `doctor_profile_json` properties 
-   * stacked inside a single, unified database request payload.
-   */
   const submitDoctorOnboarding = async (e) => {
     e.preventDefault();
     try {
       const payload = {
-        approved: true, // Mark the user status active inside the database
+        approved: true,
         doctor_profile_json: {
           specialization: docCredentials.specialization,
           bio: 'Profile activated by site administrator. Please add your bio summary updates here.',
@@ -139,7 +142,6 @@ const AdminDashboard = () => {
         }
       };
 
-      // Calls your endpoint (e.g., PUT or POST /api/admin/users/{id}/approve)
       await approveUser(selectedDoctor.id, payload);
       
       setShowDocModal(false);
@@ -152,9 +154,60 @@ const AdminDashboard = () => {
     }
   };
 
-  // Hospital Submission Operations
   const handleHospitalInput = (e) => {
     setHospitalForm({ ...hospitalForm, [e.target.name]: e.target.value });
+  };
+
+  const handleEditHospitalInput = (e) => {
+    setEditModal(prev => ({
+      ...prev,
+      hospital: { ...prev.hospital, [e.target.name]: e.target.value }
+    }));
+  };
+
+  const handleContentInput = (e) => {
+    const { name, value, files } = e.target;
+    setContentForm({
+      ...contentForm,
+      [name]: files ? files[0] : value
+    });
+  };
+
+  const submitContentForm = async (e) => {
+  e.preventDefault();
+  try {
+    // Convert object payload structure into a standard multipart/form-data container instance
+    const dataPayload = new FormData();
+    dataPayload.append('title', contentForm.title);
+    dataPayload.append('description', contentForm.description);
+    dataPayload.append('videoUrl', contentForm.videoUrl);
+    dataPayload.append('category', contentForm.category);
+    dataPayload.append('detail', contentForm.detail);
+    
+    if (contentForm.image) {
+      dataPayload.append('image', contentForm.image); // Appends the raw file object
+    }
+
+    // Fire actual post request execution routing sequence to your Laravel API endpoint
+    const response = await api.post('/api/content', dataPayload, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    
+    triggerToast(`Educational Content Module "${contentForm.title}" published successfully.`);
+    setShowContentModal(false);
+    setContentForm({ title: '', description: '', image: null, videoUrl: '', category: 'general', detail: '' });
+  } catch (err) {
+    console.error(err);
+    triggerToast(err.response?.data?.message || 'Failed to broadcast content metadata asset.', 'danger');
+  }
+};
+
+
+
+  const triggerReportGeneration = () => {
+    triggerToast('Compiling analytical engine metrics... System file export sequence standard download ready shortly.', 'info');
   };
 
   const submitHospital = async (e) => {
@@ -183,7 +236,7 @@ const AdminDashboard = () => {
         name, address, phone, email, city, state, country,
         latitude: parseFloat(latitude),
         longitude: parseFloat(longitude),
-        specialties: specialties ? specialties.split(',').map(s => s.trim()) : [],
+        specialties: specialties && specialties.trim() !== '' ? specialties.split(',').map(s => s.trim()) : [],
         services: []
       };
 
@@ -204,7 +257,7 @@ const AdminDashboard = () => {
       const payload = {
         name: h.name, address: h.address, phone: h.phone, email: h.email, city: h.city, state: h.state, country: h.country,
         latitude: parseFloat(h.latitude), longitude: parseFloat(h.longitude),
-        specialties: typeof h.specialties === 'string' ? h.specialties.split(',').map(s => s.trim()) : h.specialties
+        specialties: typeof h.specialties === 'string' ? (h.specialties.trim() !== '' ? h.specialties.split(',').map(s => s.trim()) : []) : h.specialties
       };
       await updateHospital(h.id, payload);
       triggerToast('Hospital registry values modified.');
@@ -226,18 +279,48 @@ const AdminDashboard = () => {
         </Toast>
       </ToastContainer>
 
+      {/* Title Header Panel */}
       <div className="mb-4">
-        <h2 className="fw-bold text-dark"><i className="bi bi-cpu-fill text-primary me-2"></i>System Engine Dashboard</h2>
-        <p className="text-muted small">Manage credential onboarding loops, update platform listings, and inspect system database entities.</p>
+        <h2 className="fw-bold text-dark m-0"><i className="bi bi-cpu-fill text-primary me-2"></i>System Engine Dashboard</h2>
+        <p className="text-muted small mb-0">Manage credential onboarding loops, update platform listings, and inspect system database entities.</p>
       </div>
 
       <Card className="border-0 shadow-sm rounded-4 overflow-hidden bg-white">
         <Card.Body className="p-4">
-          <Tabs id="admin-control-tabs" activeKey={activeKey} onSelect={(k) => setActiveKey(k)} className="border-bottom-0 mb-3 custom-admin-tabs">
+          
+          {/* Flexbox Action Row: Tab Bar Container housing Tabs Left and Actions Right */}
+          <div className="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-2 mb-3 gap-3">
             
-            {/* TAB SECTION: REGISTER APPROVAL SYSTEM QUEUE */}
-            <Tab eventKey="approvals" title={<span><i className="bi bi-shield-check me-2"></i>Approvals ({pending.length})</span>}>
-              <div className="mt-3">
+            {/* Navigation Tab Sets */}
+            <Tabs 
+              id="admin-control-tabs" 
+              activeKey={activeKey} 
+              onSelect={(k) => setActiveKey(k)} 
+              className="border-bottom-0 custom-admin-tabs"
+              style={{ marginBottom: '-9px' }}
+            >
+              <Tab eventKey="approvals" title={<span><i className="bi bi-shield-check me-2"></i>Approvals ({pending.length})</span>} />
+              <Tab eventKey="hospitals" title={<span><i className="bi bi-building me-2"></i>Hospital Networks ({hospitals.length})</span>} />
+              <Tab eventKey="users" title={<span><i className="bi bi-people me-2"></i>User Directories ({users.length})</span>} />
+            </Tabs>
+
+            {/* Action Buttons sitting Side-by-Side with the navigation row tabs */}
+            <div className="d-flex gap-2">
+              <Button variant="primary" size="sm" className="rounded-3 fw-semibold px-3 d-flex align-items-center gap-1" onClick={() => setShowContentModal(true)}>
+                <i className="bi bi-file-earmark-plus"></i> Create Content
+              </Button>
+              <Button variant="outline-dark" size="sm" className="rounded-3 fw-semibold px-3 d-flex align-items-center gap-1" onClick={triggerReportGeneration}>
+                <i className="bi bi-graph-up-arrow"></i> Generate Report
+              </Button>
+            </div>
+          </div>
+
+          {/* Dynamic Window Container Workspace based on target active tab index */}
+          <div className="tab-content-panel">
+            
+            {/* CONTENT LOGIC WINDOW: APPROVALS */}
+            {activeKey === 'approvals' && (
+              <div className="mt-2">
                 {loadingPending ? (
                   <div className="text-center py-5"><Spinner animation="border" variant="primary" /><p className="text-muted small mt-2">Reading security registration keys...</p></div>
                 ) : (
@@ -294,76 +377,73 @@ const AdminDashboard = () => {
                   </Table>
                 )}
               </div>
-            </Tab>
+            )}
 
-            {/* TAB SECTION: HEALTH INFRASTRUCTURE NETWORKS */}
-            <Tab eventKey="hospitals" title={<span><i className="bi bi-building me-2"></i>Hospital Networks ({hospitals.length})</span>}>
-              
-              {/* TOP FORMS CARD SUB SECTION */}
-              <Card className="border border-light-subtle rounded-3 p-4 bg-light bg-opacity-25 mt-3 mb-4">
-                <h5 className="fw-bold mb-3 text-dark"><i className="bi bi-plus-circle text-primary me-2"></i>Provision New Healthcare Center Node</h5>
-                <Form onSubmit={submitHospital}>
-                  <Row className="g-3">
-                    <Col md={4} sm={12}>
-                      <Form.Group><Form.Label className="small fw-semibold text-secondary">Hospital Name</Form.Label><Form.Control size="sm" name="name" value={hospitalForm.name} onChange={handleHospitalInput} required placeholder="e.g. Saint Mary Hospital" /></Form.Group>
-                    </Col>
-                    <Col md={5} sm={12}><Form.Group><Form.Label className="small fw-semibold text-secondary">Physical Address</Form.Label><Form.Control size="sm" name="address" value={hospitalForm.address} onChange={handleHospitalInput} required placeholder="Street numbers and block values" /></Form.Group></Col>
-                    <Col md={3} sm={12}><Form.Group><Form.Label className="small fw-semibold text-secondary">City Node</Form.Label><Form.Control size="sm" name="city" value={hospitalForm.city} onChange={handleHospitalInput} required /></Form.Group></Col>
-                    <Col md={3} sm={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">State/Region</Form.Label><Form.Control size="sm" name="state" value={hospitalForm.state} onChange={handleHospitalInput} required /></Form.Group></Col>
-                    <Col md={3} sm={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Country</Form.Label><Form.Control size="sm" name="country" value={hospitalForm.country} onChange={handleHospitalInput} required /></Form.Group></Col>
-                    <Col md={3} sm={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Contact Telephone Line</Form.Label><Form.Control size="sm" name="phone" value={hospitalForm.phone} onChange={handleHospitalInput} required /></Form.Group></Col>
-                    <Col md={3} sm={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Admin Email Address</Form.Label><Form.Control size="sm" type="email" name="email" value={hospitalForm.email} onChange={handleHospitalInput} required /></Form.Group></Col>
-                    <Col md={3} sm={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Map Latitude Location</Form.Label><Form.Control size="sm" type="number" step="any" name="latitude" value={hospitalForm.latitude} onChange={handleHospitalInput} required placeholder="e.g. 40.7128" /></Form.Group></Col>
-                    <Col md={3} sm={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Map Longitude Location</Form.Label><Form.Control size="sm" type="number" step="any" name="longitude" value={hospitalForm.longitude} onChange={handleHospitalInput} required placeholder="e.g. -74.0060" /></Form.Group></Col>
-                    <Col md={6} sm={12}><Form.Group><Form.Label className="small fw-semibold text-secondary">Medical Specialties (Split with commas)</Form.Label><Form.Control size="sm" name="specialties" value={hospitalForm.specialties} onChange={handleHospitalInput} placeholder="Cardiology, Pediatrics, Neurology" /></Form.Group></Col>
-                  </Row>
-                  <Button type="submit" variant="primary" size="sm" className="mt-3 px-4 rounded-3 fw-semibold shadow-xs"><i className="bi bi-check-lg me-1"></i>Deploy Node Record</Button>
-                </Form>
-              </Card>
+            {/* CONTENT LOGIC WINDOW: HEALTH NETWORKS */}
+            {activeKey === 'hospitals' && (
+              <div className="mt-2">
+                <Card className="border border-light-subtle rounded-3 p-4 bg-light bg-opacity-25 mb-4">
+                  <h5 className="fw-bold mb-3 text-dark"><i className="bi bi-plus-circle text-primary me-2"></i>Provision New Healthcare Center Node</h5>
+                  <Form onSubmit={submitHospital}>
+                    <Row className="g-3">
+                      <Col md={4} sm={12}><Form.Group><Form.Label className="small fw-semibold text-secondary">Hospital Name</Form.Label><Form.Control size="sm" name="name" value={hospitalForm.name} onChange={handleHospitalInput} required placeholder="e.g. Saint Mary Hospital" /></Form.Group></Col>
+                      <Col md={5} sm={12}><Form.Group><Form.Label className="small fw-semibold text-secondary">Physical Address</Form.Label><Form.Control size="sm" name="address" value={hospitalForm.address} onChange={handleHospitalInput} required placeholder="Street numbers and block values" /></Form.Group></Col>
+                      <Col md={3} sm={12}><Form.Group><Form.Label className="small fw-semibold text-secondary">City Node</Form.Label><Form.Control size="sm" name="city" value={hospitalForm.city} onChange={handleHospitalInput} required /></Form.Group></Col>
+                      <Col md={3} sm={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">State/Region</Form.Label><Form.Control size="sm" name="state" value={hospitalForm.state} onChange={handleHospitalInput} required /></Form.Group></Col>
+                      <Col md={3} sm={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Country</Form.Label><Form.Control size="sm" name="country" value={hospitalForm.country} onChange={handleHospitalInput} required /></Form.Group></Col>
+                      <Col md={3} sm={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Contact Telephone Line</Form.Label><Form.Control size="sm" name="phone" value={hospitalForm.phone} onChange={handleHospitalInput} required /></Form.Group></Col>
+                      <Col md={3} sm={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Admin Email Address</Form.Label><Form.Control size="sm" type="email" name="email" value={hospitalForm.email} onChange={handleHospitalInput} required /></Form.Group></Col>
+                      <Col md={3} sm={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Map Latitude Location</Form.Label><Form.Control size="sm" type="number" step="any" name="latitude" value={hospitalForm.latitude} onChange={handleHospitalInput} required placeholder="e.g. 40.7128" /></Form.Group></Col>
+                      <Col md={3} sm={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Map Longitude Location</Form.Label><Form.Control size="sm" type="number" step="any" name="longitude" value={hospitalForm.longitude} onChange={handleHospitalInput} required placeholder="e.g. -74.0060" /></Form.Group></Col>
+                      <Col md={6} sm={12}><Form.Group><Form.Label className="small fw-semibold text-secondary">Medical Specialties (Split with commas)</Form.Label><Form.Control size="sm" name="specialties" value={hospitalForm.specialties} onChange={handleHospitalInput} placeholder="Cardiology, Pediatrics, Neurology" /></Form.Group></Col>
+                    </Row>
+                    <Button type="submit" variant="primary" size="sm" className="mt-3 px-4 rounded-3 fw-semibold shadow-xs"><i className="bi bi-check-lg me-1"></i>Deploy Node Record</Button>
+                  </Form>
+                </Card>
 
-              {/* BOTTOM LIST DATA TABLE SUB SECTION */}
-              <h5 className="fw-bold mb-3 text-dark mt-4">Active Indexed Directories</h5>
-              {loadingHospitals ? <div className="text-center py-4"><Spinner animation="border" variant="primary" /></div> : (
-                <Table responsive hover className="align-middle border small mb-0">
-                  <thead className="table-light text-uppercase text-secondary">
-                    <tr><th>Hospital Node Name</th><th>Locality Destination</th><th>Specialty Arrays</th><th>Contact Records</th><th className="text-end pe-3">Actions</th></tr>
-                  </thead>
-                  <tbody>
-                    {hospitals.length === 0 && <tr><td colSpan={5} className="text-center text-muted py-3">No hospitals mapped inside the database schema yet.</td></tr>}
-                    {hospitals.map(h => (
-                      <tr key={h.id}>
-                        <td className="fw-bold text-dark">{h.name}</td>
-                        <td className="text-secondary">{h.address || '-'}, {h.city || ''}</td>
-                        <td>
-                          {h.specialties && Array.isArray(h.specialties) ? h.specialties.map((spec, i) => (
-                            <Badge key={i} bg="secondary" className="me-1 bg-opacity-10 text-secondary border font-normal">{spec}</Badge>
-                          )) : (h.specialties || '-')}
-                        </td>
-                        <td className="extra-small text-muted">
-                          <div><i className="bi bi-telephone text-xs me-1"></i>{h.phone}</div>
-                          <div><i className="bi bi-envelope text-xs me-1"></i>{h.email}</div>
-                        </td>
-                        <td className="text-end pe-3">
-                          <Button size="sm" variant="outline-primary" className="rounded-3 me-1 px-2.5 py-1" onClick={() => setEditModal({ show: true, hospital: h })}><i className="bi bi-pencil"></i></Button>
-                          <Button size="sm" variant="outline-danger" className="rounded-3 px-2.5 py-1" onClick={async () => {
-                            if (!window.confirm('Erase this hospital asset completely?')) return;
-                            try {
-                              await deleteHospital(h.id);
-                              triggerToast('Hospital listing deleted from indices.');
-                              fetchHospitals();
-                            } catch { triggerToast('Failed to clear entry.', 'danger'); }
-                          }}><i className="bi bi-trash"></i></Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
-            </Tab>
+                <h5 className="fw-bold mb-3 text-dark mt-4">Active Indexed Directories</h5>
+                {loadingHospitals ? <div className="text-center py-4"><Spinner animation="border" variant="primary" /></div> : (
+                  <Table responsive hover className="align-middle border small mb-0">
+                    <thead className="table-light text-uppercase text-secondary">
+                      <tr><th>Hospital Node Name</th><th>Locality Destination</th><th>Specialty Arrays</th><th>Contact Records</th><th className="text-end pe-3">Actions</th></tr>
+                    </thead>
+                    <tbody>
+                      {hospitals.length === 0 && <tr><td colSpan={5} className="text-center text-muted py-3">No hospitals mapped inside the database schema yet.</td></tr>}
+                      {hospitals.map(h => (
+                        <tr key={h.id}>
+                          <td className="fw-bold text-dark">{h.name}</td>
+                          <td className="text-secondary">{h.address || '-'}, {h.city || ''}</td>
+                          <td>
+                            {h.specialties && Array.isArray(h.specialties) ? h.specialties.map((spec, i) => (
+                              <Badge key={i} bg="secondary" className="me-1 bg-opacity-10 text-secondary border font-normal">{spec}</Badge>
+                            )) : (h.specialties || '-')}
+                          </td>
+                          <td className="extra-small text-muted">
+                            <div><i className="bi bi-telephone text-xs me-1"></i>{h.phone}</div>
+                            <div><i className="bi bi-envelope text-xs me-1"></i>{h.email}</div>
+                          </td>
+                          <td className="text-end pe-3">
+                            <Button size="sm" variant="outline-primary" className="rounded-3 me-1 px-2.5 py-1" onClick={() => setEditModal({ show: true, hospital: h })}><i className="bi bi-pencil"></i></Button>
+                            <Button size="sm" variant="outline-danger" className="rounded-3 px-2.5 py-1" onClick={async () => {
+                              if (!window.confirm('Erase this hospital asset completely?')) return;
+                              try {
+                                await deleteHospital(h.id);
+                                triggerToast('Hospital listing deleted from indices.');
+                                fetchHospitals();
+                              } catch { triggerToast('Failed to clear entry.', 'danger'); }
+                            }}><i className="bi bi-trash"></i></Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                )}
+              </div>
+            )}
 
-            {/* TAB SECTION: IDENTITY INSTANCE SYSTEM USERS */}
-            <Tab eventKey="users" title={<span><i className="bi bi-people me-2"></i>User Directories ({users.length})</span>}>
-              <div className="mt-3">
+            {/* CONTENT LOGIC WINDOW: SYSTEM USER RECORDS */}
+            {activeKey === 'users' && (
+              <div className="mt-2">
                 {loadingUsers ? <div className="text-center py-4"><Spinner animation="border" variant="primary" /></div> : (
                   <Table responsive hover className="align-middle border small mb-0">
                     <thead className="table-light text-uppercase text-secondary">
@@ -397,10 +477,73 @@ const AdminDashboard = () => {
                   </Table>
                 )}
               </div>
-            </Tab>
-          </Tabs>
+            )}
+          </div>
+
         </Card.Body>
       </Card>
+
+      {/* MODAL WINDOW CONTEXT: CREATIVE CONTENT MANAGEMENT SUBMODULE */}
+      <Modal show={showContentModal} onHide={() => setShowContentModal(false)} size="lg" centered>
+        <Form onSubmit={submitContentForm}>
+          <Modal.Header closeButton>
+            <Modal.Title className="fw-bold text-dark">
+              <i className="bi bi-file-earmark-medical text-primary me-2"></i>Publish Medical & Wellness Asset
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="p-4 bg-light">
+            <Card className="border-0 shadow-xs p-4 rounded-3 bg-white">
+              <Row className="g-3">
+                <Col md={12}>
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-secondary">Content Title</Form.Label>
+                    <Form.Control name="title" value={contentForm.title} onChange={handleContentInput} required placeholder="e.g. Stress Management" />
+                  </Form.Group>
+                </Col>
+                <Col md={12}>
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-secondary">Brief Description</Form.Label>
+                    <Form.Control as="textarea" rows={2} name="description" value={contentForm.description} onChange={handleContentInput} required placeholder="Incorporate relaxation techniques like deep breathing..." />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-secondary">Thumbnail Cover Asset (Image)</Form.Label>
+                    <Form.Control type="file" name="image" accept="image/*" onChange={handleContentInput} />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-secondary">Stream Validation URL (Video)</Form.Label>
+                    <Form.Control type="url" name="videoUrl" value={contentForm.videoUrl} onChange={handleContentInput} placeholder="https://www.youtube.com/embed/VIDEO_ID" />
+                  </Form.Group>
+                </Col>
+                <Col md={12}>
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-secondary">Indexing Classification Category</Form.Label>
+                    <Form.Select name="category" value={contentForm.category} onChange={handleContentInput}>
+                      <option value="general">General Medical Advice</option>
+                      <option value="cardiology">Cardiology Insights</option>
+                      <option value="pediatrics">Pediatric Growth Guides</option>
+                      <option value="neurology">Neurological Well-being</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={12}>
+                  <Form.Group>
+                    <Form.Label className="small fw-semibold text-secondary">Complete Educational Details</Form.Label>
+                    <Form.Control as="textarea" rows={4} name="detail" value={contentForm.detail} onChange={handleContentInput} placeholder="Insert extensive article text, clinical citations, or instructional notes here..." />
+                  </Form.Group>
+                </Col>
+              </Row>
+            </Card>
+          </Modal.Body>
+          <Modal.Footer className="bg-light border-0">
+            <Button variant="secondary" onClick={() => setShowContentModal(false)}>Cancel Drop</Button>
+            <Button type="submit" variant="primary" className="px-4 fw-semibold shadow-xs">Publish Asset Module</Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
 
       {/* MODAL WINDOW CONTEXT: DOCTOR METADATA GENERATION OVERLAY */}
       <Modal show={showDocModal} onHide={() => setShowDocModal(false)} size="lg" centered>
@@ -448,18 +591,20 @@ const AdminDashboard = () => {
         <Modal.Header closeButton><Modal.Title className="fw-bold">Modify Hospital parameters</Modal.Title></Modal.Header>
         <Modal.Body>
           {editModal.hospital && (
-            <Form><Row className="g-3">
-              <Col md={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Hospital Registry Name</Form.Label><Form.Control value={editModal.hospital.name || ''} onChange={(e) => setEditModal({ ...editModal, hospital: { ...editModal.hospital, name: e.target.value } })} /></Form.Group></Col>
-              <Col md={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Street Mapping Destination</Form.Label><Form.Control value={editModal.hospital.address || ''} onChange={(e) => setEditModal({ ...editModal, hospital: { ...editModal.hospital, address: e.target.value } })} /></Form.Group></Col>
-              <Col md={4}><Form.Group><Form.Label className="small fw-semibold text-secondary">City</Form.Label><Form.Control value={editModal.hospital.city || ''} onChange={(e) => setEditModal({ ...editModal, hospital: { ...editModal.hospital, city: e.target.value } })} /></Form.Group></Col>
-              <Col md={4}><Form.Group><Form.Label className="small fw-semibold text-secondary">State</Form.Label><Form.Control value={editModal.hospital.state || ''} onChange={(e) => setEditModal({ ...editModal, hospital: { ...editModal.hospital, state: e.target.value } })} /></Form.Group></Col>
-              <Col md={4}><Form.Group><Form.Label className="small fw-semibold text-secondary">Country</Form.Label><Form.Control value={editModal.hospital.country || ''} onChange={(e) => setEditModal({ ...editModal, hospital: { ...editModal.hospital, country: e.target.value } })} /></Form.Group></Col>
-              <Col md={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Telephone contact</Form.Label><Form.Control value={editModal.hospital.phone || ''} onChange={(e) => setEditModal({ ...editModal, hospital: { ...editModal.hospital, phone: e.target.value } })} /></Form.Group></Col>
-              <Col md={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Email Routing</Form.Label><Form.Control value={editModal.hospital.email || ''} onChange={(e) => setEditModal({ ...editModal, hospital: { ...editModal.hospital, email: e.target.value } })} /></Form.Group></Col>
-              <Col md={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Latitude</Form.Label><Form.Control value={editModal.hospital.latitude || ''} onChange={(e) => setEditModal({ ...editModal, hospital: { ...editModal.hospital, latitude: e.target.value } })} /></Form.Group></Col>
-              <Col md={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Longitude</Form.Label><Form.Control value={editModal.hospital.longitude || ''} onChange={(e) => setEditModal({ ...editModal, hospital: { ...editModal.hospital, longitude: e.target.value } })} /></Form.Group></Col>
-              <Col md={12}><Form.Group><Form.Label className="small fw-semibold text-secondary">Specialties Array (Split with commas)</Form.Label><Form.Control value={Array.isArray(editModal.hospital.specialties) ? editModal.hospital.specialties.join(', ') : (editModal.hospital.specialties || '')} onChange={(e) => setEditModal({ ...editModal, hospital: { ...editModal.hospital, specialties: e.target.value } })} /></Form.Group></Col>
-            </Row></Form>
+            <Form>
+              <Row className="g-3">
+                <Col md={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Hospital Registry Name</Form.Label><Form.Control name="name" value={editModal.hospital.name || ''} onChange={handleEditHospitalInput} /></Form.Group></Col>
+                <Col md={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Street Mapping Destination</Form.Label><Form.Control name="address" value={editModal.hospital.address || ''} onChange={handleEditHospitalInput} /></Form.Group></Col>
+                <Col md={4}><Form.Group><Form.Label className="small fw-semibold text-secondary">City</Form.Label><Form.Control name="city" value={editModal.hospital.city || ''} onChange={handleEditHospitalInput} /></Form.Group></Col>
+                <Col md={4}><Form.Group><Form.Label className="small fw-semibold text-secondary">State</Form.Label><Form.Control name="state" value={editModal.hospital.state || ''} onChange={handleEditHospitalInput} /></Form.Group></Col>
+                <Col md={4}><Form.Group><Form.Label className="small fw-semibold text-secondary">Country</Form.Label><Form.Control name="country" value={editModal.hospital.country || ''} onChange={handleEditHospitalInput} /></Form.Group></Col>
+                <Col md={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Telephone contact</Form.Label><Form.Control name="phone" value={editModal.hospital.phone || ''} onChange={handleEditHospitalInput} /></Form.Group></Col>
+                <Col md={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Email Routing</Form.Label><Form.Control name="email" value={editModal.hospital.email || ''} onChange={handleEditHospitalInput} /></Form.Group></Col>
+                <Col md={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Latitude</Form.Label><Form.Control name="latitude" value={editModal.hospital.latitude || ''} onChange={handleEditHospitalInput} /></Form.Group></Col>
+                <Col md={6}><Form.Group><Form.Label className="small fw-semibold text-secondary">Longitude</Form.Label><Form.Control name="longitude" value={editModal.hospital.longitude || ''} onChange={handleEditHospitalInput} /></Form.Group></Col>
+                <Col md={12}><Form.Group><Form.Label className="small fw-semibold text-secondary">Specialties Array (Split with commas)</Form.Label><Form.Control name="specialties" value={Array.isArray(editModal.hospital.specialties) ? editModal.hospital.specialties.join(', ') : (editModal.hospital.specialties || '')} onChange={handleEditHospitalInput} /></Form.Group></Col>
+              </Row>
+            </Form>
           )}
         </Modal.Body>
         <Modal.Footer><Button variant="secondary" onClick={() => setEditModal({ show: false, hospital: null })}>Cancel</Button><Button variant="primary" className="px-4" onClick={submitEditHospital}>Save Changes</Button></Modal.Footer>
