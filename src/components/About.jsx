@@ -5,29 +5,48 @@ import aboutpic from '../assets/aboutpic.png'
 // You can replace these placeholder names with your actual team members' information
 const teamMembers = [
   {
-    name: "Student Name 1",
+    name: "Melese waanaa",
     role: "Frontend Developer / Mapping Lead",
-    email: "student1@example.com",
+    email: "melese.waanaa@example.com",
     avatar: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png" 
   },
   {
-    name: "Student Name 2",
+    name: "Motuma rabuma",
     role: "Backend Developer / API Integration",
-    email: "student2@example.com",
+    email: "motuma.rabuma@example.com",
     avatar: "https://cdn-icons-png.flaticon.com/512/3135/3135768.png"
   },
   {
-    name: "Student Name 3",
+    name: "Kabe gutema",
     role: "Database Administrator / GIS Specialist",
-    email: "student3@example.com",
+    email: "kabe.gutema@example.com",
     avatar: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
   },
   {
-    name: "Student Name 4",
+    name: "Bereket Epherem",
     role: "UI/UX Designer / QA Tester",
-    email: "student4@example.com",
+    email: "bereket.epherem@example.com",
     avatar: "https://cdn-icons-png.flaticon.com/512/3135/3135768.png"
-  }
+  },
+   {
+    name: "Dagafa lammaa",
+    role: "UI/UX Designer / QA Tester",
+    email: "dagafa.lammaa@example.com",
+    avatar: "https://cdn-icons-png.flaticon.com/512/3135/3135768.png"
+  },
+     {
+    name: "Musaba ibrahim ",
+    role: "Frontend Developer",
+    email: "musabibraham@example.com",
+    avatar: "https://cdn-icons-png.flaticon.com/512/3135/3135768.png"
+  },
+
+      {
+    name: "Osama ibrahim",
+    role: "Backend Developer",
+    email: "osamaibrahim@example.com",
+    avatar: "https://cdn-icons-png.flaticon.com/512/3135/3135768.png"
+  },
 ];
 
 const About = () => {
@@ -129,7 +148,7 @@ const About = () => {
         {/* MENTOR ACKNOWLEDGEMENT */}
         <div className="mt-5 text-center border-top pt-4">
           <p className="text-muted small mb-0">
-            Project Advisor: <strong className="text-dark">[Insert Advisor Name / Professor Name]</strong>
+            Project Advisor: <strong className="text-dark">Teshome A</strong>
           </p>
           <small className="text-muted text-uppercase tracking-wider">
             Department of Computer Science & Information Technology

@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+// 🔴 CHANGE THIS IP TO YOUR ACTUAL LOCAL IP ADDRESS
+const API_BASE_URL = 'http://localhost:8000'; 
+
 const api = axios.create({
-  baseURL: 'http://localhost:8000',          // or import.meta.env.VITE_LARAVEL_URL
+  baseURL: API_BASE_URL,
   withCredentials: true,                     // Critical – sends cookies
   headers: {
     'Accept': 'application/json',
@@ -12,13 +15,18 @@ const api = axios.create({
 // Auto-refresh CSRF before mutating requests (very reliable)
 api.interceptors.request.use(async (config) => {
   if (['post', 'put', 'patch', 'delete'].includes(config.method)) {
-    await axios.get('http://localhost:8000/sanctum/csrf-cookie', { withCredentials: true });
+    await axios.get(`${API_BASE_URL}/sanctum/csrf-cookie`, { withCredentials: true });
   }
 
   // Add authorization header if token exists
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  // Handle FormData: let axios automatically set Content-Type with proper boundary
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
   }
 
   return config;
@@ -65,3 +73,6 @@ export const getChatMessages = (doctorId) => api.get(`/api/chat/messages/${docto
 // Doctor chat endpoints
 export const getClients = () => api.get('/api/chat/clients');
 export const sendDoctorMessage = (userId, payload) => api.post(`/api/chat/doctor/messages/${userId}`, payload);
+
+
+export const getHospitals = () => api.get('/api/hospitals');

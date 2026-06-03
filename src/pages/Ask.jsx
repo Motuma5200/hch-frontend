@@ -5,45 +5,98 @@ export default function Ask() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
+  const shouldScrollRef = useRef(false);
+
+  const scrollMessagesToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Smoothly tracks streaming increments as text content updates
+  useEffect(() => {
+    if (shouldScrollRef.current || loading) {
+      scrollMessagesToBottom();
+    }
+  }, [messages, loading]);
+
+  // Prevent input from getting focus on page load
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.blur();
+    }
+  }, []);
 
   const handleSend = async () => {
     if (!question.trim()) return;
 
-    const userMessage = { role: "user", content: question };
-    setMessages((prev) => [...prev, userMessage]);
+    const text = question.trim();
+    const userMessage = { role: "user", content: text };
+    
+    shouldScrollRef.current = true;
+    
+    // Create the updated history array including the brand new user message
+    const updatedHistory = [...messages, userMessage];
 
+    // Optimistically update state with the user's message and a placeholder for the stream
+    setMessages([...updatedHistory, { role: "assistant", content: "" }]);
     setLoading(true);
     setQuestion("");
+    
+    // Remove focus from input after sending
+    if (inputRef.current) {
+      inputRef.current.blur();
+    }
 
     try {
-      const res = await fetch("http://127.0.0.1:8080/generate", {
+      // Pointed to port 8002 where your FastAPI backend is running
+      const res = await fetch("http://192.168.100.244:8002/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ history: updatedHistory }), 
       });
 
       if (!res.ok) throw new Error("Server error");
 
-      const data = await res.json();
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let done = false;
 
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: data.response || "No response received" },
-      ]);
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        
+        if (value) {
+          // stream: true ensures partial multi-byte UTF-8 streams don't shatter mid-character
+          const chunk = decoder.decode(value, { stream: true });
+          
+          setMessages((prev) => {
+            const updated = [...prev];
+            const lastIdx = updated.length - 1;
+            updated[lastIdx] = {
+              ...updated[lastIdx],
+              content: updated[lastIdx].content + chunk,
+            };
+            return updated;
+          });
+          shouldScrollRef.current = true;
+        }
+      }
     } catch (err) {
       console.error(err);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "❌ Sorry, I couldn't connect to the server." },
-      ]);
+      setMessages((prev) => {
+        const updated = [...prev];
+        const lastIdx = updated.length - 1;
+        updated[lastIdx] = {
+          role: "assistant",
+          content: "❌ Sorry, I couldn't connect to the server or process the request.",
+        };
+        return updated;
+      });
     } finally {
       setLoading(false);
+      shouldScrollRef.current = false;
     }
   };
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
 
   return (
     <div
@@ -121,31 +174,57 @@ export default function Ask() {
           </div>
         )}
 
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            style={{
-              alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-              maxWidth: "75%",
-            }}
-          >
+        {messages.map((msg, index) => {
+          // If the assistant message is entirely blank and we're loading, hide this bubble 
+          // momentarily to allow your "Thinking..." container below to take precedence.
+          if (msg.role === "assistant" && !msg.content && loading && index === messages.length - 1) {
+            return null; 
+          }
+
+          const isStreamingNow = msg.role === "assistant" && loading && index === messages.length - 1;
+
+          return (
             <div
+              key={index}
               style={{
-                backgroundColor: msg.role === "user" ? "#1e40af" : "#ffffff",
-                color: msg.role === "user" ? "white" : "#1f2937",
-                borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                padding: "14px 18px",
-                boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
-                lineHeight: "1.5",
-                border: msg.role === "assistant" ? "1px solid #e2e8f0" : "none",
+                alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
+                maxWidth: "75%",
               }}
             >
-              {msg.content}
+              <div
+                style={{
+                  backgroundColor: msg.role === "user" ? "#1e40af" : "#ffffff",
+                  color: msg.role === "user" ? "white" : "#1f2937",
+                  borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                  padding: "14px 18px",
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+                  lineHeight: "1.5",
+                  border: msg.role === "assistant" ? "1px solid #e2e8f0" : "none",
+                  whiteSpace: "pre-wrap", // Essential for displaying paragraph splits cleanly
+                }}
+              >
+                {msg.content}
+                
+                {/* Visual cursor element mimicking the interactive writing behavior */}
+                {isStreamingNow && (
+                  <span 
+                    style={{
+                      marginLeft: "4px",
+                      display: "inline-block",
+                      color: "#1e40af",
+                      animation: "blink 1s steps(2, start) infinite"
+                    }}
+                  >
+                    ●
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
-        {loading && (
+        {/* Initial Waiting State Spinner Container */}
+        {loading && messages[messages.length - 1]?.content === "" && (
           <div
             style={{
               alignSelf: "flex-start",
@@ -155,6 +234,9 @@ export default function Ask() {
               boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
               color: "#64748b",
               border: "1px solid #e2e8f0",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
             }}
           >
             🧠 AI is thinking...
@@ -182,6 +264,7 @@ export default function Ask() {
           }}
         >
           <input
+            ref={inputRef}
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}

@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Row, Col, Badge, Spinner, Alert, Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 
+// ✅ FIXED: Import your central authenticated configuration wrapper
+import api from '../../services/Api'
+
 const HealthStatusDashboard = () => {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -13,31 +16,21 @@ const HealthStatusDashboard = () => {
       setLoading(true);
       setError('');
       
-      // FIXED: Synchronized with 'token'
-      const token = localStorage.getItem('token');
+      // ✅ FIXED: Replaced raw window fetch with your custom configured axios instance.
+      // Your Api.js automatically reads the bearer token from localStorage and hits the right local IP.
+      const response = await api.get('/api/health/status');
       
-      if (!token) throw new Error('No token found. Please login.');
-      
-      const response = await fetch('http://localhost:8000/api/health/status', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Server error' }));
-        throw new Error(errorData.message || `HTTP ${response.status}`);
-      }
-      
-      const result = await response.json();
+      const result = response.data;
       if (result.success) {
         setStatus(result.data);
       } else {
-        setError(result.message);
+        setError(result.message || 'Failed to retrieve dashboard summaries.');
       }
     } catch (err) {
-      setError(err.message);
+      console.error('Dashboard fetch crash:', err);
+      // Extracts custom error message from Laravel if available, defaults to system connection error
+      const msg = err.response?.data?.message || err.message || 'Connection to backend failed.';
+      setError(msg);
     } finally {
       setLoading(false);
     }

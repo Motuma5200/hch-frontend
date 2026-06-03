@@ -8,10 +8,12 @@ const Learn = () => {
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
   
-  // Track which cards have active video playback running
-  const [activeVideoId, setActiveVideoId] = useState(null);
   // Track which cards have expanded details open
   const [expandedId, setExpandedId] = useState(null);
+
+  // ✅ FIXED: Dynamically extract your active network host configuration from Axios.
+  // This automatically swaps 'http://localhost:8000' for your Wi-Fi IP address so images load on other devices!
+  const BACKEND_URL = api.defaults.baseURL ? api.defaults.baseURL.replace(/\/api$/, '') : 'http://localhost:8000';
 
   useEffect(() => {
     const fetchContentFromDb = async () => {
@@ -54,7 +56,6 @@ const Learn = () => {
               onClick={() => {
                 setSelectedCategory(cat);
                 setExpandedId(null);
-                setActiveVideoId(null);
               }}
               className="text-capitalize px-3 fw-semibold"
             >
@@ -86,38 +87,37 @@ const Learn = () => {
           {filteredTips.length > 0 ? (
             filteredTips.map((tip) => {
               const isExpanded = expandedId === tip.id;
-              const isPlayingVideo = activeVideoId === tip.id;
+
+              // Build the asset URL safely using the dynamic fallback domain variable
+              let finalImageSrc = null;
+              if (tip.image) {
+                finalImageSrc = tip.image.startsWith('http') 
+                  ? tip.image 
+                  : `${BACKEND_URL}/storage/${tip.image}`;
+              }
 
               return (
                 <Col key={tip.id} md={6} lg={4} className="mb-4 d-flex">
                   <Card className="shadow-sm border-0 rounded-3 overflow-hidden w-100 d-flex flex-column custom-content-card">
                     
                     {/* Visual Media Block Header Layer */}
-                    {tip.videoUrl && isPlayingVideo ? (
-                      <div className="ratio ratio-16x9 bg-dark">
-                        <iframe
-                          src={`${tip.videoUrl}?autoplay=1`}
-                          title={tip.title}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        ></iframe>
-                      </div>
+                    {finalImageSrc ? (
+                      <Card.Img 
+                        variant="top" 
+                        src={finalImageSrc} 
+                        alt={tip.title}
+                        style={{ height: '180px', objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.onerror = null; 
+                          e.target.src = "https://placehold.co/600x400?text=Image+Not+Found";
+                        }}
+                      />
                     ) : (
                       <div 
-                        className="bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center text-secondary position-relative" 
+                        className="bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center text-secondary" 
                         style={{ height: '180px' }}
                       >
-                        <i className="bi bi-camera-video fs-1 opacity-50"></i>
-                        {tip.videoUrl && (
-                          <Button 
-                            variant="danger" 
-                            size="sm"
-                            className="position-absolute rounded-pill px-3 fw-semibold shadow-sm d-flex align-items-center gap-1"
-                            onClick={() => setActiveVideoId(tip.id)}
-                          >
-                            <i className="bi bi-play-fill fs-5"></i> Start Stream
-                          </Button>
-                        )}
+                        <i className="bi bi-image fs-1 opacity-50"></i>
                       </div>
                     )}
 
@@ -132,24 +132,17 @@ const Learn = () => {
 
                       {/* Interactive Controls Foot Area */}
                       <div className="d-flex gap-2 mt-auto pt-2 border-top">
-                        {tip.videoUrl && !isPlayingVideo && (
+                        {tip.videoUrl && (
                           <Button 
+                            as="a"
+                            href={tip.videoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             variant="primary" 
                             size="sm"
-                            className="flex-grow-1 rounded-3 fw-semibold"
-                            onClick={() => setActiveVideoId(tip.id)}
+                            className="flex-grow-1 rounded-3 fw-semibold d-flex align-items-center justify-content-center"
                           >
                             <i className="bi bi-play-circle-fill me-1"></i> Watch Video
-                          </Button>
-                        )}
-                        {isPlayingVideo && (
-                          <Button 
-                            variant="outline-danger" 
-                            size="sm"
-                            className="flex-grow-1 rounded-3 fw-semibold"
-                            onClick={() => setActiveVideoId(null)}
-                          >
-                            <i className="bi bi-stop-circle-fill me-1"></i> Close Video
                           </Button>
                         )}
                         <Button 

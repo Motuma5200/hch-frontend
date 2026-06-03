@@ -189,11 +189,8 @@ const AdminDashboard = () => {
     }
 
     // Fire actual post request execution routing sequence to your Laravel API endpoint
-    const response = await api.post('/api/content', dataPayload, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    // NOTE: Do NOT set Content-Type header for FormData - axios will set it automatically with proper boundary
+    const response = await api.post('/api/content', dataPayload);
     
     triggerToast(`Educational Content Module "${contentForm.title}" published successfully.`);
     setShowContentModal(false);
@@ -522,10 +519,10 @@ const AdminDashboard = () => {
                   <Form.Group>
                     <Form.Label className="small fw-semibold text-secondary">Indexing Classification Category</Form.Label>
                     <Form.Select name="category" value={contentForm.category} onChange={handleContentInput}>
-                      <option value="general">General Medical Advice</option>
-                      <option value="cardiology">Cardiology Insights</option>
-                      <option value="pediatrics">Pediatric Growth Guides</option>
-                      <option value="neurology">Neurological Well-being</option>
+                      <option value="general">General</option>
+                      <option value="disease">Disease</option>
+                      <option value="pediatrics">Diet</option>
+                      <option value="neurology">Exercise</option>
                     </Form.Select>
                   </Form.Group>
                 </Col>

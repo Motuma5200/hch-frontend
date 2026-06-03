@@ -28,10 +28,10 @@ const DoctorsList = () => {
           const credentials = profile.credentials || {};
 
           const extractedSpecialty = profile.specialization || 
-                             doc.specialization || 
-                             profile.specialty || 
-                             doc.specialty || 
-                                      'General Practitioner';
+                               doc.specialization || 
+                               profile.specialty || 
+                               doc.specialty || 
+                                        'General Practitioner';
             return {
               id: doc.id,
               name: doc.name || 'Specialist Provider',
@@ -58,14 +58,14 @@ const DoctorsList = () => {
             };
           });
 
-       
+        
         
         setDoctors(structuralData);
       } catch (err) {
         console.error(err);
         setError('Failed to load certified doctors array from data index.');
       } finally {
-        setLoading(false);
+        loading && setLoading(false);
       }
     };
 
@@ -113,6 +113,30 @@ const DoctorsList = () => {
 
   return (
     <Container style={{ paddingTop: '90px', paddingBottom: '40px' }}>
+      
+      {/* 🌟 PREMIUM NAVIGATION UTILITY ACTION: BACK TO DASHBOARD */}
+      <div className="d-flex justify-content-start mb-4">
+        <Button
+          variant="outline-secondary"
+          className="d-flex align-items-center gap-2 px-3 py-2 border-secondary-subtle bg-white text-secondary rounded-3 shadow-sm"
+          style={{ fontSize: '0.9rem', transition: 'all 0.15s ease' }}
+          onClick={() => navigate('/dashboard')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = '#0f172a';
+            e.currentTarget.style.borderColor = '#94a3b8';
+            e.currentTarget.style.backgroundColor = '#f8fafc';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = '#64748b';
+            e.currentTarget.style.borderColor = '#e2e8f0';
+            e.currentTarget.style.backgroundColor = '#fff';
+          }}
+        >
+          <i className="bi bi-arrow-left fs-5"></i>
+          <span>Back to Dashboard</span>
+        </Button>
+      </div>
+
       <h2 className="mb-2 text-center fw-bold text-primary">Our Certified Medical Specialists</h2>
       
       <p className="text-center text-secondary mx-auto mb-4" style={{ maxWidth: '650px', fontSize: '1.05rem', lineHeight: '1.6' }}>

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Form, Button, Card, Row, Col, Alert } from 'react-bootstrap';
+import { Form, Button, Card, Row, Col, Alert, Spinner } from 'react-bootstrap';
+
+import api from '../../services/Api'
 
 const SymptomInput = () => {
   const [formData, setFormData] = useState({
@@ -9,6 +11,7 @@ const SymptomInput = () => {
     recorded_at: new Date().toISOString().slice(0, 16)
   });
   
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
   const commonSymptoms = [
@@ -19,20 +22,16 @@ const SymptomInput = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     setMessage({ type: '', text: '' });
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/health/symptoms/record', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(formData)
-      });
+      // ✅ FIXED: Replaced raw fetch with api.post. 
+      // This will automatically route the request to your Wi-Fi network host and attach your token.
+      const response = await api.post('/api/health/symptoms/record', formData);
 
-      const data = await response.json();
+      // Axios unpacks JSON directly into .data
+      const data = response.data;
 
       if (data.success) {
         setMessage({ type: 'success', text: 'Symptom recorded successfully!' });
@@ -46,25 +45,32 @@ const SymptomInput = () => {
         setMessage({ type: 'danger', text: data.message || 'Failed to record symptom' });
       }
     } catch (error) {
-      setMessage({ type: 'danger', text: 'Error recording symptom: ' + error.message });
+      console.error('Symptom recording error:', error);
+      // Grabs validation or application failures from Laravel if accessible
+      const msg = error.response?.data?.message || error.message || 'Error recording symptom.';
+      setMessage({ type: 'danger', text: msg });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Card>
-      <Card.Header>
-        <h5>Record Symptom</h5>
+    <Card className="shadow-sm border-0">
+      <Card.Header className="bg-warning text-dark py-3">
+        <h5 className="mb-0 fw-bold">Record Symptom</h5>
       </Card.Header>
       <Card.Body>
         {message.text && (
-          <Alert variant={message.type}>{message.text}</Alert>
+          <Alert variant={message.type} dismissible onClose={() => setMessage({ type: '', text: '' })}>
+            {message.text}
+          </Alert>
         )}
 
         <Form onSubmit={handleSubmit}>
           <Row>
             <Col md={6}>
               <Form.Group className="mb-3">
-                <Form.Label>Symptom *</Form.Label>
+                <Form.Label className="fw-bold small">Symptom *</Form.Label>
                 <Form.Select 
                   value={formData.symptom}
                   onChange={(e) => setFormData({...formData, symptom: e.target.value})}
@@ -81,7 +87,7 @@ const SymptomInput = () => {
 
             <Col md={6}>
               <Form.Group className="mb-3">
-                <Form.Label>Severity *</Form.Label>
+                <Form.Label className="fw-bold small">Severity *</Form.Label>
                 <Form.Select 
                   value={formData.severity}
                   onChange={(e) => setFormData({...formData, severity: e.target.value})}
@@ -96,7 +102,7 @@ const SymptomInput = () => {
           </Row>
 
           <Form.Group className="mb-3">
-            <Form.Label>Description</Form.Label>
+            <Form.Label className="fw-bold small">Description</Form.Label>
             <Form.Control
               as="textarea"
               rows={3}
@@ -107,7 +113,7 @@ const SymptomInput = () => {
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>When did it start? *</Form.Label>
+            <Form.Label className="fw-bold small">When did it start? *</Form.Label>
             <Form.Control
               type="datetime-local"
               value={formData.recorded_at}
@@ -116,9 +122,15 @@ const SymptomInput = () => {
             />
           </Form.Group>
 
-          <Button type="submit" variant="warning" size="lg">
-            Record Symptom
-          </Button>
+          <div className="d-grid gap-2">
+            <Button type="submit" variant="warning" size="lg" disabled={loading}>
+              {loading ? (
+                <><Spinner animation="border" size="sm" className="me-2" /> Saving...</>
+              ) : (
+                'Record Symptom'
+              )}
+            </Button>
+          </div>
         </Form>
       </Card.Body>
     </Card>

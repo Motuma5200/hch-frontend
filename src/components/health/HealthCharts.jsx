@@ -13,128 +13,112 @@ import {
   Filler
 } from 'chart.js';
 
+import api from '../../services/Api';
+
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 const HealthCharts = () => {
   const [chartData, setChartData] = useState(null);
-  const [selectedMetric, setSelectedMetric] = useState('blood_pressure');
+  const [selectedMetric, setSelectedMetric] = useState('weight');
   const [days, setDays] = useState(90); 
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
 
   const metricOptions = [
-    { value: 'blood_pressure', label: 'Blood Pressure' },
     { value: 'blood_sugar', label: 'Blood Sugar' },
     { value: 'weight', label: 'Weight' },
     { value: 'temperature', label: 'Temperature' },
     { value: 'bmi', label: 'BMI' },
-    { value: 'heart_rate', label: 'Heart Rate' }
+    { value: 'heart_rate', label: 'Heart Rate' },
+    { value: 'blood_pressure', label: 'Blood Pressure' },
   ];
 
- const fetchChartData = useCallback(async () => {
-  const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+  const fetchChartData = useCallback(async () => {
+    setLoading(true);
+    setApiError(null);
 
-  if (!token) {
-    setApiError('Authentication token missing. Please log in again.');
-    setLoading(false);
-    return;
-  }
-
-  setLoading(true);
-  setApiError(null);
-
-  try {
-    const url = `http://localhost:8000/api/health/charts/${selectedMetric}?days=${days}`;
-    console.log("Requesting URL:", url);
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json'
-      }
-    });
-
-    // Defensive parsing if server responds with HTML / not JSON
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      const text = await response.text();
-      throw new Error('Non-JSON response from server: ' + text.slice(0, 300));
-    }
-
-    const result = await response.json();
-    if (!result.success) throw new Error(result.message || `Server Error ${response.status}`);
-
-    // Normalize into an array of { date, value } or { date, systolic, diastolic }
-    let normalized = [];
-
-    if (result.data && Array.isArray(result.data.flat) && result.data.flat.length > 0) {
-      normalized = result.data.flat.map(it => {
-        return selectedMetric === 'blood_pressure'
-          ? { date: it.date, systolic: it.systolic, diastolic: it.diastolic }
-          : { date: it.date, value: it.value };
+    try {
+      // Fetching from your custom configured Axios instance
+      const response = await api.get(`/api/health/charts/${selectedMetric}`, {
+        params: { days: days }
       });
-    } else if (Array.isArray(result.data)) {
-      normalized = result.data;
-    } else if (result.data && result.data.series) {
-      if (selectedMetric === 'blood_pressure') {
-        const sys = result.data.series.systolic || [];
-        const dia = result.data.series.diastolic || [];
-        const dMap = new Map(dia.map(d => [d.x, d.y]));
-        normalized = sys.map(s => ({ date: s.x, systolic: s.y, diastolic: dMap.get(s.x) ?? null }));
-      } else {
-        normalized = (result.data.series || []).map(p => ({ date: p.x, value: p.y }));
-      }
-    }
 
-    if (!normalized.length) {
+      const result = response.data;
+      
+      if (!result.success) throw new Error(result.message || 'Server returned failure state');
+
+      // Normalize into an array of { date, value } or { date, systolic, diastolic }
+      let normalized = [];
+
+      if (result.data && Array.isArray(result.data.flat) && result.data.flat.length > 0) {
+        normalized = result.data.flat.map(it => {
+          return selectedMetric === 'blood_pressure'
+            ? { date: it.date, systolic: it.systolic, diastolic: it.diastolic }
+            : { date: it.date, value: it.value };
+        });
+      } else if (Array.isArray(result.data)) {
+        normalized = result.data;
+      } else if (result.data && result.data.series) {
+        if (selectedMetric === 'blood_pressure') {
+          const sys = result.data.series.systolic || [];
+          const dia = result.data.series.diastolic || [];
+          const dMap = new Map(dia.map(d => [d.x, d.y]));
+          normalized = sys.map(s => ({ date: s.x, systolic: s.y, diastolic: dMap.get(s.x) ?? null }));
+        } else {
+          normalized = (result.data.series || []).map(p => ({ date: p.x, value: p.y }));
+        }
+      }
+
+      if (!normalized.length) {
+        setChartData(null);
+        setApiError(null);
+      } else {
+        const labels = normalized.map(item => item.date);
+        let datasets = [];
+
+        if (selectedMetric === 'blood_pressure') {
+          datasets = [
+            {
+              label: 'Systolic',
+              data: normalized.map(i => i.systolic),
+              borderColor: 'rgb(255, 99, 132)',
+              backgroundColor: 'rgba(255, 99, 132, 0.1)',
+              tension: 0.3,
+              fill: true,
+            },
+            {
+              label: 'Diastolic',
+              data: normalized.map(i => i.diastolic),
+              borderColor: 'rgb(54, 162, 235)',
+              backgroundColor: 'rgba(54, 162, 235, 0.1)',
+              tension: 0.3,
+              fill: true,
+            }
+          ];
+        } else {
+          datasets = [{
+            label: metricOptions.find(m => m.value === selectedMetric)?.label || selectedMetric.toUpperCase(),
+            data: normalized.map(i => i.value),
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            tension: 0.3,
+            pointRadius: 6,
+            fill: true,
+          }];
+        }
+
+        setChartData({ labels, datasets });
+      }
+    } catch (error) {
+      console.error('Frontend Fetch Error:', error);
+      const msg = error.response?.data?.message || error.message || 'An error occurred';
+      setApiError(msg);
       setChartData(null);
-      setApiError(null);
-    } else {
-      const labels = normalized.map(item => item.date);
-      let datasets = [];
-
-      if (selectedMetric === 'blood_pressure') {
-        datasets = [
-          {
-            label: 'Systolic',
-            data: normalized.map(i => i.systolic),
-            borderColor: 'rgb(255, 99, 132)',
-            backgroundColor: 'rgba(255, 99, 132, 0.1)',
-            tension: 0.3,
-            fill: true,
-          },
-          {
-            label: 'Diastolic',
-            data: normalized.map(i => i.diastolic),
-            borderColor: 'rgb(54, 162, 235)',
-            backgroundColor: 'rgba(54, 162, 235, 0.1)',
-            tension: 0.3,
-            fill: true,
-          }
-        ];
-      } else {
-        datasets = [{
-          label: metricOptions.find(m => m.value === selectedMetric)?.label || selectedMetric.toUpperCase(),
-          data: normalized.map(i => i.value),
-          borderColor: 'rgb(75, 192, 192)',
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
-          tension: 0.3,
-          pointRadius: 6,
-          fill: true,
-        }];
-      }
-
-      setChartData({ labels, datasets });
+    } finally {
+      // ✅ FIXED: Unconditionally shuts off loading state to break the infinite rendering cycle
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Frontend Fetch Error:', error);
-    setApiError(error.message);
-    setChartData(null);
-  } finally {
-    setLoading(false);
-  }
-}, [selectedMetric, days]);
+  }, [selectedMetric, days]);
 
   useEffect(() => {
     fetchChartData();
@@ -165,7 +149,7 @@ const HealthCharts = () => {
         </Button>
       </Card.Header>
       <Card.Body>
-        {apiError && <Alert variant="danger">{apiError}</Alert>}
+        {apiError && <Alert variant="danger" className="rounded-3">{apiError}</Alert>}
         
         <Row className="mb-4">
           <Col md={6}>
@@ -192,7 +176,7 @@ const HealthCharts = () => {
           ) : (
             <div className="text-center mt-5 p-5 bg-light rounded border border-dashed">
               <p className="text-muted">No data found in database for <strong>{selectedMetric}</strong>.</p>
-              <small>Ensure your data in PHPMyAdmin has the <strong>recorded_at</strong> date within the last 90 days.</small>
+              <small>Ensure your data in PHPMyAdmin has the <strong>recorded_at</strong> date within the last {days} days.</small>
             </div>
           )}
         </div>

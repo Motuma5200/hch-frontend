@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Form, Button, Card, Row, Col, Alert, Spinner } from 'react-bootstrap';
 
+import api from '../../services/Api'
+
 const HealthDataInput = ({ onRecordAdded }) => {
   const [formData, setFormData] = useState({
     metric_type: '',
@@ -42,18 +44,6 @@ const HealthDataInput = ({ onRecordAdded }) => {
     setLoading(true);
     setMessage({ type: '', text: '' });
 
-    // FIXED: Standardized to 'token'
-    const token = localStorage.getItem('token');
-    
-    if (!token) {
-        setMessage({ 
-            type: 'danger', 
-            text: 'Authentication required. Please log in before recording data.' 
-        });
-        setLoading(false);
-        return;
-    }
-
     try {
       const payload = { ...formData };
 
@@ -70,28 +60,11 @@ const HealthDataInput = ({ onRecordAdded }) => {
         payload.value = parseFloat(formData.value);
       }
       
-      const response = await fetch('http://localhost:8000/api/health/metrics/record', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify(payload)
-      });
+      // ✅ FIXED: Using api.post ensures your CSRF interceptor fires and requests hit your Wi-Fi network host address 
+      const response = await api.post('/api/health/metrics/record', payload);
 
-      if (!response.ok) {
-        let errorMessage = `HTTP Error: ${response.status}`;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          errorMessage = response.status === 401 ? 'Session expired.' : 'Server Error.';
-        }
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
+      // Axios returns the server response body directly inside .data
+      const data = response.data;
 
       if (data.success) {
         setMessage({ type: 'success', text: 'Health data recorded successfully!' });
@@ -108,7 +81,10 @@ const HealthDataInput = ({ onRecordAdded }) => {
         setMessage({ type: 'danger', text: data.message || 'Failed to record data' });
       }
     } catch (error) {
-      setMessage({ type: 'danger', text: error.message });
+      console.error('Data submission error:', error);
+      // Extracts validation errors or messages directly from Laravel if available
+      const msg = error.response?.data?.message || error.message || 'An error occurred while saving your data.';
+      setMessage({ type: 'danger', text: msg });
     } finally {
       setLoading(false);
     }

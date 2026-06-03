@@ -23,9 +23,9 @@ const Approvals = () => {
 
   const fetchPendingDoctors = async () => {
     setLoading(true);
+    setError(''); // Clear error when pulling fresh logs
     try {
       const resp = await getPendingApprovals();
-      // Safeguard: Ensure we only populate the table with users under the 'doctor' designation
       const doctorsOnly = (resp.data || []).filter(user => user.role === 'doctor');
       setPendingDoctors(doctorsOnly);
     } catch (err) {
@@ -41,10 +41,11 @@ const Approvals = () => {
   // Open modal overlay and load context parameters
   const handleOpenDoctorAudit = (doctor) => {
     setSelectedDoctor(doctor);
+    // Explicitly fallback to 'General Practitioner' directly since raw doctor objects lack this field
     setDocCredentials({
       licenseNo: '',
       npi: '',
-      specialization: doctor.specialization || 'General Practitioner',
+      specialization: 'General Practitioner', 
       experienceYears: 5,
       videoFee: 75.00
     });
@@ -60,10 +61,11 @@ const Approvals = () => {
       
       const payload = {
         doctor_profile_json: {
-          specialization: docCredentials.specialization,
+          specialization: docCredentials.specialization || 'General Practitioner',
           bio: 'Welcome to the health platform! Please select the edit options on your profile menu to customize this biography layout.',
-          experienceYears: parseInt(docCredentials.experienceYears),
-          videoFee: parseFloat(docCredentials.videoFee),
+          // ✅ FIXED: Using Number() || Fallback values instead of parseInt/parseFloat to prevent sending null payloads
+          experienceYears: Number(docCredentials.experienceYears) || 0,
+          videoFee: Number(docCredentials.videoFee) || 0.00,
           isOnline: false,
           supportsText: true,
           supportsVideo: true,
@@ -91,7 +93,8 @@ const Approvals = () => {
       setSuccess(`Dr. ${selectedDoctor.name} has been successfully credentialed. Their profile is now live!`);
     } catch (err) {
       console.error(err);
-      setError('An error occurred while compiling credentials or updating the record.');
+      setSuccess(''); 
+      setError(err?.response?.data?.message || 'An error occurred while compiling credentials or updating the record.');
     }
   };
 
@@ -104,7 +107,8 @@ const Approvals = () => {
       setSuccess('Application successfully rejected and removed from registration logs.');
     } catch (err) { 
       console.error(err);
-      setError('Failed to execute account rejection command.');
+      setSuccess(''); 
+      setError(err?.response?.data?.message || 'Failed to execute account rejection command.');
     }
   };
 
@@ -126,8 +130,8 @@ const Approvals = () => {
         <Badge bg="danger" className="px-3 py-2 rounded-pill fs-6">{pendingDoctors.length} Pending Board Reviews</Badge>
       </div>
 
-      {error && <Alert variant="danger" className="rounded-3 shadow-sm">{error}</Alert>}
-      {success && <Alert variant="success" className="rounded-3 shadow-sm">{success}</Alert>}
+      {error && <Alert variant="danger" dismissible onClose={() => setError('')} className="rounded-3 shadow-sm">{error}</Alert>}
+      {success && <Alert variant="success" dismissible onClose={() => setSuccess('')} className="rounded-3 shadow-sm">{success}</Alert>}
 
       {/* Main Action Table Container */}
       <Card className="border-0 shadow-sm rounded-4 overflow-hidden">

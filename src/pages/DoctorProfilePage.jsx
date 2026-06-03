@@ -7,6 +7,9 @@ const DoctorProfilePage = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   
+  // --- CENTRAL API BASE URL ---
+  const API_BASE_URL = "http://192.168.100.244:8000";
+
   // Track reactive user object parameters locally
   const [currentUser, setCurrentUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
   
@@ -14,7 +17,12 @@ const DoctorProfilePage = () => {
   const [activeTab, setActiveTab] = useState('professional');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Shared loading throttle state
+  
+  // Isolated loading states to prevent across-the-board button freezes
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 1. PUBLIC PROFILE STATE ENGINE
   const [profileData, setProfileData] = useState({
@@ -22,8 +30,7 @@ const DoctorProfilePage = () => {
     specialization: 'General Practitioner',
     bio: '',
     profileImage: null,
-    languages: ['English'],
-    insuranceProviders: ['Blue Cross Blue Shield']
+    languages: ['English']
   });
 
   // 2. ADVANCED TIME-SLOT GRID CONFIGURATION STATE
@@ -46,9 +53,10 @@ const DoctorProfilePage = () => {
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [securityAlert, setSecurityAlert] = useState({ show: false, variant: '', message: '' });
 
-  // API Config Headers - Reusable token injection structure
+  // Configured withCredentials for Laravel Sanctum cookie persistence
   const getAuthHeaders = () => ({
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    withCredentials: true 
   });
 
   // INITIALIZATION HOOK: Pull existing state configuration from backend database json column
@@ -56,8 +64,7 @@ const DoctorProfilePage = () => {
     const fetchCurrentProfileState = async () => {
       if (!currentUser.id) return;
       try {
-        // ALIGNED: Matches route: api/doctor/{id}
-        const res = await axios.get(`http://localhost:8000/api/doctor/${currentUser.id}`, getAuthHeaders());
+        const res = await axios.get(`${API_BASE_URL}/api/doctor/${currentUser.id}`, getAuthHeaders());
         
         if (res.data && res.data.doctor_profile_json) {
           const jsonProfile = res.data.doctor_profile_json;
@@ -68,13 +75,18 @@ const DoctorProfilePage = () => {
             specialization: jsonProfile.specialization || 'General Practitioner',
             bio: jsonProfile.bio || '',
             profileImage: jsonProfile.profileImage || null,
-            languages: jsonProfile.languages || ['English'],
-            insuranceProviders: jsonProfile.insuranceProviders || ['Blue Cross Blue Shield', 'Aetna Health', 'UnitedHealthcare', 'Cigna Network']
+            languages: jsonProfile.languages || ['English']
           });
 
           // Hydrate Schedule State configuration grid
           if (jsonProfile.scheduleGrid) {
-            setScheduleGrid(jsonProfile.scheduleGrid);
+            setScheduleGrid({
+              ...scheduleGrid,
+              ...jsonProfile.scheduleGrid,
+              // Convert baseline values to strings to remain uniform with state inputs
+              videoFee: String(jsonProfile.scheduleGrid.videoFee || jsonProfile.scheduleGrid.video_fee || '75.00'),
+              bufferMinutes: String(jsonProfile.scheduleGrid.bufferMinutes || jsonProfile.scheduleGrid.buffer_minutes || '15')
+            });
           }
         }
       } catch (err) {
@@ -83,6 +95,7 @@ const DoctorProfilePage = () => {
     };
 
     fetchCurrentProfileState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.id]);
 
   // Input Handling
@@ -122,6 +135,7 @@ const DoctorProfilePage = () => {
     }
   };
 
+  // Allowed profile photo updates to execute cleanly
   const triggerFileInput = () => {
     if (isEditingProfile && fileInputRef.current) {
       fileInputRef.current.click();
@@ -131,15 +145,14 @@ const DoctorProfilePage = () => {
   // --- SUBMIT 1: PUBLIC PORTAL INFORMATION SYNC ---
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
+    setIsSavingProfile(true);
     try {
-      // ALIGNED: Matches route: api/doctor/{id}
-      const res = await axios.put(`http://localhost:8000/api/doctor/${currentUser.id}`, {
+      const res = await axios.put(`${API_BASE_URL}/api/doctor/${currentUser.id}`, {
         update_type: 'professional',
         name: profileData.name,
         specialization: profileData.specialization,
         bio: profileData.bio,
         languages: profileData.languages,
-        insuranceProviders: profileData.insuranceProviders,
         profileImage: profileData.profileImage
       }, getAuthHeaders());
 
@@ -153,18 +166,38 @@ const DoctorProfilePage = () => {
     } catch (err) {
       const errorMsg = err.response?.data?.message || 'Error occurred while saving profile metrics data.';
       setSecurityAlert({ show: true, variant: 'danger', message: errorMsg });
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
   // --- SUBMIT 2: CONSULTATION TIME-SLOTS HOURS AVAILABILITY GRID ---
   const handleScheduleSubmit = async (e) => {
     e.preventDefault();
+    setIsSavingSchedule(true);
     try {
-      // ALIGNED: Matches route: api/doctor/{id}
-      const res = await axios.put(`http://localhost:8000/api/doctor/${currentUser.id}`, {
+      // Explicitly forcing input strings to solve the backend validation constraint
+      // Provides alternate snake_case backups to align securely with Laravel rules
+      const payload = {
         update_type: 'schedule',
-        scheduleGrid: scheduleGrid
-      }, getAuthHeaders());
+        scheduleGrid: {
+          days: scheduleGrid.days,
+          morningStart: scheduleGrid.morningStart,
+          morningEnd: scheduleGrid.morningEnd,
+          afternoonStart: scheduleGrid.afternoonStart,
+          afternoonEnd: scheduleGrid.afternoonEnd,
+          
+          // Explicit string configurations to bypass string validation restrictions
+          videoFee: String(scheduleGrid.videoFee || '0'), 
+          bufferMinutes: String(scheduleGrid.bufferMinutes || '0'),
+          
+          // Backend validation array alternatives
+          video_fee: String(scheduleGrid.videoFee || '0'),
+          buffer_minutes: String(scheduleGrid.bufferMinutes || '0')
+        }
+      };
+
+      const res = await axios.put(`${API_BASE_URL}/api/doctor/${currentUser.id}`, payload, getAuthHeaders());
 
       const updatedUser = { ...currentUser, doctor_profile_json: res.data.user.doctor_profile_json };
       localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -175,6 +208,8 @@ const DoctorProfilePage = () => {
     } catch (err) {
       const errorMsg = err.response?.data?.message || 'Failed to persist structural shift criteria map attributes blocks.';
       setSecurityAlert({ show: true, variant: 'danger', message: errorMsg });
+    } finally {
+      setIsSavingSchedule(false);
     }
   };
 
@@ -186,9 +221,9 @@ const DoctorProfilePage = () => {
       return;
     }
 
+    setIsChangingPassword(true);
     try {
-      // ALIGNED: Matches route: api/doctor/{id}
-      await axios.put(`http://localhost:8000/api/doctor/${currentUser.id}`, {
+      await axios.put(`${API_BASE_URL}/api/doctor/${currentUser.id}`, {
         update_type: 'security',
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword
@@ -200,6 +235,8 @@ const DoctorProfilePage = () => {
       const serverErrors = err.response?.data?.errors;
       const errorMsg = serverErrors?.currentPassword ? serverErrors.currentPassword[0] : 'Validation failure resetting password criteria inputs.';
       setSecurityAlert({ show: true, variant: 'danger', message: errorMsg });
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -222,8 +259,7 @@ const DoctorProfilePage = () => {
     try {
       const token = localStorage.getItem('token');
 
-      // Fires request to the secure, unified Sanctum termination path
-      await axios.delete('http://localhost:8000/api/user/terminate-account', {
+      await axios.delete(`${API_BASE_URL}/api/user/terminate-account`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -276,12 +312,6 @@ const DoctorProfilePage = () => {
             ) : (
               profileData.name.charAt(0).toUpperCase()
             )}
-
-            {isEditingProfile && (
-              <div className="position-absolute bottom-0 start-0 w-100 bg-dark bg-opacity-75 d-flex align-items-center justify-content-center text-white" style={{ height: '32px', fontSize: '0.65rem' }}>
-                <i className="bi bi-camera-fill me-1"></i> Update
-              </div>
-            )}
           </div>
 
           <h3 className="fw-bold mb-0 text-dark">Dr. {profileData.name}</h3>
@@ -292,7 +322,7 @@ const DoctorProfilePage = () => {
           </p>
 
           {/* Quick Info Tags Matrix */}
-          <div className="d-flex justify-content-center gap-1.5 mb-2 flex-wrap">
+          <div className="d-flex justify-content-center gap-2 mb-2 flex-wrap">
             {profileData.languages.map((lang, idx) => (
               <Badge key={idx} bg="secondary" className="text-dark bg-opacity-10 border border-secondary border-opacity-25 extra-small rounded-1">
                 {lang}
@@ -300,7 +330,7 @@ const DoctorProfilePage = () => {
             ))}
           </div>
 
-          <div className="d-flex flex-column align-items-center gap-1.5 small text-muted">
+          <div className="d-flex flex-column align-items-center gap-2 small text-muted">
             <span><i className="bi bi-envelope-fill me-1"></i>{currentUser?.email || 'doctor@healthhub.com'}</span>
             <div>
               <Badge bg="info" className="text-dark text-capitalize px-3 py-1.5 rounded-pill fw-semibold shadow-xs">
@@ -354,7 +384,7 @@ const DoctorProfilePage = () => {
                     className="px-3 rounded-pill fw-semibold shadow-sm"
                     onClick={() => setIsEditingProfile(!isEditingProfile)}
                   >
-                    {isEditingProfile ? "Cancel Changes" : "Edit Professional Details"}
+                    {isEditingProfile ? "Cancel Changes" : "Edit Bio & Languages"}
                   </Button>
                 </div>
 
@@ -378,13 +408,13 @@ const DoctorProfilePage = () => {
                     <Col md={6}>
                       <Form.Group>
                         <Form.Label className="small fw-semibold text-secondary">Full Title Display</Form.Label>
-                        <Form.Control type="text" name="name" value={profileData.name} disabled={!isEditingProfile} onChange={handleProfileChange} required className="rounded-3" />
+                        <Form.Control type="text" name="name" value={profileData.name} disabled={true} onChange={handleProfileChange} required className="rounded-3" />
                       </Form.Group>
                     </Col>
                     <Col md={6}>
                       <Form.Group>
                         <Form.Label className="small fw-semibold text-secondary">Specialization Department</Form.Label>
-                        <Form.Select name="specialization" value={profileData.specialization} disabled={!isEditingProfile} onChange={handleProfileChange} className="rounded-3">
+                        <Form.Select name="specialization" value={profileData.specialization} disabled={true} onChange={handleProfileChange} className="rounded-3">
                           <option value="General Practitioner">General Practitioner</option>
                           <option value="Cardiologist">Cardiologist</option>
                           <option value="Pediatrician">Pediatrician</option>
@@ -398,7 +428,7 @@ const DoctorProfilePage = () => {
                   </Row>
 
                   <Row className="g-3 mb-3">
-                    <Col md={6}>
+                    <Col md={12}>
                       <Form.Group>
                         <Form.Label className="small fw-semibold text-secondary">Languages Spoken (Multi-Select)</Form.Label>
                         <Form.Select 
@@ -420,18 +450,6 @@ const DoctorProfilePage = () => {
                         <Form.Text className="text-muted extra-small d-block mt-1">Hold Ctrl (or Cmd on Mac) to select multiple items.</Form.Text>
                       </Form.Group>
                     </Col>
-                    <Col md={6}>
-                      <Form.Group>
-                        <Form.Label className="small fw-semibold text-secondary">Accepted Insurance Coverage Networks</Form.Label>
-                        <div className="d-flex flex-wrap gap-2 p-2 border rounded-3 bg-light" style={{ minHeight: '85px', contentVisibility: 'auto' }}>
-                          {profileData.insuranceProviders.map((provider, i) => (
-                            <Badge key={i} bg="white" className="text-dark border px-2 py-1.5 rounded-pill shadow-xs small fw-medium">
-                              <i className="bi bi-check-circle-fill text-success me-1"></i>{provider}
-                            </Badge>
-                          ))}
-                        </div>
-                      </Form.Group>
-                    </Col>
                   </Row>
                   
                   <Form.Group className="mb-4">
@@ -445,8 +463,8 @@ const DoctorProfilePage = () => {
                   </Form.Group>
 
                   {isEditingProfile && (
-                    <Button type="submit" variant="success" className="rounded-3 px-4 fw-semibold shadow-sm">
-                      Save Profile Changes
+                    <Button type="submit" variant="success" className="rounded-3 px-4 fw-semibold shadow-sm" disabled={isSavingProfile}>
+                      {isSavingProfile ? 'Saving Changes...' : 'Save Profile Changes'}
                     </Button>
                   )}
                 </Form>
@@ -551,8 +569,8 @@ const DoctorProfilePage = () => {
                   </Row>
 
                   {isEditingSchedule && (
-                    <Button type="submit" variant="success" className="rounded-3 px-4 fw-semibold shadow-sm">
-                      Save Interval Updates
+                    <Button type="submit" variant="success" className="rounded-3 px-4 fw-semibold shadow-sm" disabled={isSavingSchedule}>
+                      {isSavingSchedule ? 'Saving Changes...' : 'Save Interval Updates'}
                     </Button>
                   )}
                 </Form>
@@ -582,13 +600,13 @@ const DoctorProfilePage = () => {
                       <Form.Control type="password" name="confirmPassword" value={passwordData.confirmPassword} onChange={handlePasswordChange} required className="rounded-3 py-2" />
                     </Form.Group>
 
-                    <Button type="submit" variant="danger" className="rounded-3 px-4 fw-semibold shadow-sm">
-                      Update Password Security
+                    <Button type="submit" variant="danger" className="rounded-3 px-4 fw-semibold shadow-sm" disabled={isChangingPassword}>
+                      {isChangingPassword ? 'Processing Reset...' : 'Update Password Security'}
                     </Button>
                   </Form>
                 </Card>
 
-                {/* VISUAL INTEGRATION: DANGER ZONE INTERFACE */}
+                {/* DANGER ZONE INTERFACE */}
                 <Card className="border-0 shadow-sm rounded-4 p-4 border-top border-danger border-3 bg-danger-subtle bg-opacity-10">
                   <h4 className="fw-bold text-danger mb-1 small">Danger Zone</h4>
                   <p className="text-muted small mb-3">Deleting your clinical profile records is permanent and completely irreversible.</p>

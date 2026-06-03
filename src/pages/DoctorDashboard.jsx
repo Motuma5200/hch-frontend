@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Nav, Table, Badge } from 'react-bootstrap';
+import { Container, Row, Col, Card, Nav, Badge } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import DoctorChat from './DoctorChat';
 
@@ -26,8 +26,8 @@ const DoctorDashboard = () => {
     };
   }, []);
 
-  // DASHBOARD NAV STATE
-  const [activeTab, setActiveTab] = useState('overview');
+  // DASHBOARD NAV STATE - Adjusted default to 'chat' to match swapped position priority
+  const [activeTab, setActiveTab] = useState('chat');
 
   return (
     <div style={{ backgroundColor: '#f4f6f9', minHeight: '100vh', paddingTop: '100px', paddingBottom: '50px' }}>
@@ -87,11 +87,7 @@ const DoctorDashboard = () => {
           <Col lg={3}>
             <Card className="border-0 shadow-sm rounded-4 p-3">
               <Nav variant="pills" className="flex-column gap-1" activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
-                <Nav.Item>
-                  <Nav.Link eventKey="overview" className="rounded-3 py-2.5 fw-medium d-flex align-items-center gap-2">
-                    <i className="bi bi-grid-1x2-fill"></i> Account Overview
-                  </Nav.Link>
-                </Nav.Item>
+                {/* POSITION SWAPPED: Patient Communications is now on top */}
                 <Nav.Item>
                   <Nav.Link eventKey="chat" className="rounded-3 py-2.5 fw-medium d-flex align-items-center justify-content-between">
                     <span className="d-flex align-items-center gap-2">
@@ -100,16 +96,36 @@ const DoctorDashboard = () => {
                     {hasNewClientMessage && <Badge bg="danger" pill>New</Badge>}
                   </Nav.Link>
                 </Nav.Item>
+                {/* POSITION SWAPPED: Account Overview is now on bottom */}
+                <Nav.Item>
+                  <Nav.Link eventKey="overview" className="rounded-3 py-2.5 fw-medium d-flex align-items-center gap-2">
+                    <i className="bi bi-grid-1x2-fill"></i> Account Overview
+                  </Nav.Link>
+                </Nav.Item>
               </Nav>
             </Card>
           </Col>
 
           {/* RIGHT SIDEBAR: Active Panels */}
           <Col lg={9}>
+            {/* POSITION SWAPPED: Patient Communications UI Block renders top */}
+            {activeTab === 'chat' && (
+              <div className="d-flex flex-column gap-4">
+                <Card className="shadow-sm border-0 rounded-4 p-4">
+                  <Card.Body className="p-0">
+                    <h4 className="fw-bold text-dark mb-2">Patient Communications Inbox</h4>
+                    <p className="text-muted small mb-4">Use the workspace chat platform below to select patients from your client roster and respond to message queries.</p>
+                    <DoctorChat />
+                  </Card.Body>
+                </Card>
+              </div>
+            )}
+
+            {/* POSITION SWAPPED: Account Overview UI Block renders bottom */}
             {activeTab === 'overview' && (
               <Card className="border-0 shadow-sm rounded-4 p-4">
                 <h4 className="fw-bold text-dark mb-4">Account Status Dashboard</h4>
-                <Row className="g-3 mb-4">
+                <Row className="g-3">
                   <Col md={6}>
                     <div className="p-3 border rounded-3 bg-light">
                       <h6 className="fw-bold text-secondary mb-1">Profile Visibility Status</h6>
@@ -123,45 +139,8 @@ const DoctorDashboard = () => {
                     </div>
                   </Col>
                 </Row>
-                
-                <h5 className="fw-bold text-dark mb-3">Recent Active Schedules</h5>
-                <Table responsive hover className="align-middle small">
-                  <thead className="table-light">
-                    <tr>
-                      <th>Patient Name</th>
-                      <th>Type</th>
-                      <th>Scheduled Date</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="fw-semibold">John Doe</td>
-                      <td><span className="badge bg-primary-subtle text-primary">Video Call</span></td>
-                      <td>Tomorrow, 10:00 AM</td>
-                      <td><span className="badge bg-warning text-dark">Confirmed</span></td>
-                    </tr>
-                    <tr>
-                      <td className="fw-semibold">Sarah Jenkins</td>
-                      <td><span className="badge bg-success-subtle text-success">Secure Text</span></td>
-                      <td>Continuous Chat Channel</td>
-                      <td><span className="badge bg-success">Active</span></td>
-                    </tr>
-                  </tbody>
-                </Table>
+                {/* Recent Active Schedules Table completely removed from this view block */}
               </Card>
-            )}
-
-            {activeTab === 'chat' && (
-              <div className="d-flex flex-column gap-4">
-                <Card className="shadow-sm border-0 rounded-4 p-4">
-                  <Card.Body className="p-0">
-                    <h4 className="fw-bold text-dark mb-2">Patient Communications Inbox</h4>
-                    <p className="text-muted small mb-4">Use the workspace chat platform below to select patients from your client roster and respond to message queries.</p>
-                    <DoctorChat />
-                  </Card.Body>
-                </Card>
-              </div>
             )}
           </Col>
         </Row>

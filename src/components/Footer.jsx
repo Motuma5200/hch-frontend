@@ -1,4 +1,5 @@
-function Footer() {
+function Footer ()
+{
   return (
     <footer className="bg-dark text-light py-5">
       <div className="container">
@@ -12,27 +13,16 @@ function Footer() {
             <p className="text-light-emphasis">
               Your complete health companion. Track, connect, and take control of your wellness.
             </p>
-            <div className="mt-3">
-              <span className="text-teal">🫀</span> Smart • Secure • Personalized
-            </div>
           </div>
 
           {/* Quick Links */}
           <div className="col-lg-2 col-md-6">
             <h6 className="fw-bold text-white mb-3">Platform</h6>
             <ul className="list-unstyled">
-              <li className="mb-2">
-                <a href="/" className="footer-link">Home</a>
-              </li>
-              <li className="mb-2">
-                <a href="/ai" className="footer-link">AI Assistant</a>
-              </li>
-              <li className="mb-2">
-                <a href="/tracking" className="footer-link">Health Tracking</a>
-              </li>
-              <li className="mb-2">
-                <a href="/hospitals" className="footer-link">Nearby Hospitals</a>
-              </li>
+              <li className="mb-2"><a href="/" className="footer-link">Home</a></li>
+              <li className="mb-2"><a href="/ai" className="footer-link">AI Assistant</a></li>
+              <li className="mb-2"><a href="/tracking" className="footer-link">Health Tracking</a></li>
+              <li className="mb-2"><a href="/hospitals" className="footer-link">Nearby Hospitals</a></li>
             </ul>
           </div>
 
@@ -40,18 +30,10 @@ function Footer() {
           <div className="col-lg-2 col-md-6">
             <h6 className="fw-bold text-white mb-3">Features</h6>
             <ul className="list-unstyled">
-              <li className="mb-2">
-                <a href="#" className="footer-link">Doctor Chat</a>
-              </li>
-              <li className="mb-2">
-                <a href="#" className="footer-link">Personalized Insights</a>
-              </li>
-              <li className="mb-2">
-                <a href="#" className="footer-link">Nutrition Guide</a>
-              </li>
-              <li className="mb-2">
-                <a href="#" className="footer-link">Reports & Analytics</a>
-              </li>
+              <li className="mb-2"><a href="#" className="footer-link">Doctor Chat</a></li>
+              <li className="mb-2"><a href="#" className="footer-link">Personalized Insights</a></li>
+              <li className="mb-2"><a href="#" className="footer-link">Nutrition Guide</a></li>
+              <li className="mb-2"><a href="#" className="footer-link">Reports & Analytics</a></li>
             </ul>
           </div>
 
@@ -77,9 +59,6 @@ function Footer() {
           <p className="mb-0 text-light-emphasis">
             © 2026 Health Check Hub. All rights reserved.
           </p>
-          <div className="mt-3 mt-md-0">
-            Made with ❤️ for better health
-          </div>
         </div>
       </div>
     </footer>
@@ -87,3 +66,4 @@ function Footer() {
 }
 
 export default Footer;
+

@@ -50,7 +50,8 @@ const UserDashboard = () => {
   };
 
   return (
-    <Container className="mt-4">
+    /* 🌟 FLUID CONTAINER WITH ZERO SIDE PADDING EXTENDS LAYOUT TO BOTH EDGES */
+    <Container fluid className="px-0 mt-4">
       {user && user.role === 'admin' && <AdminDashboard />}
 
       {user && user.role === 'doctor' && (
@@ -63,45 +64,74 @@ const UserDashboard = () => {
 
       {(!user || user.role === 'client') && (
         <>
-          {/* HEADER ROW WITH TOP-RIGHT CORNER PROFILE AVATAR & INBOX */}
-          <div className="mb-4 d-flex justify-content-between align-items-center" style={{ paddingTop: '90px' }}>
-            <div>
-              <h2 className="fw-bold m-0">Health Dashboard</h2>
-              <p className="text-muted m-0">Monitor and track your health metrics and symptoms</p>
+          {/* 🌟 ENTERPRISE CLINICAL HEADER PANEL (Far Left Title & Far Right Balanced Profile Controls) */}
+          <div 
+            className="mb-5 d-flex justify-content-between align-items-center p-4 bg-white border border-light rounded-4 shadow-sm" 
+            style={{ 
+              paddingTop: '24px', 
+              marginTop: '90px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02)'
+            }}
+          >
+            {/* FAR LEFT: Clinical Scope Text Title */}
+            <div className="text-start">
+              <h3 className="fw-extrabold m-0 text-dark tracking-tight" style={{ fontWeight: 800, color: '#0f172a' }}>
+                Health Intelligence Portal
+              </h3>
+              <p className="text-muted m-0 small fw-medium mt-1">
+                <i className="bi bi-shield-check text-success me-1"></i> Continuous Telemetry & Sync Active
+              </p>
             </div>
             
-            {/* CORNER QUICK ACTIONS: LOOKUP, INBOX, AND PROFILE */}
+            {/* FAR RIGHT: Executive Action Matrix & Premium Profile Link */}
             <div className="d-flex align-items-center gap-3">
               
               {/* Action A: Browse Directory */}
               <Button
                 variant="outline-primary"
-                className="fw-semibold px-3 shadow-xs d-flex align-items-center rounded-3"
+                className="fw-semibold px-3 py-2 shadow-xs d-flex align-items-center rounded-3 border-secondary-subtle text-secondary"
+                style={{ fontSize: '0.9rem', backgroundColor: '#fff' }}
                 onClick={() => navigate('/contact-doctor')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#0284c7';
+                  e.currentTarget.style.borderColor = '#0284c7';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#64748b';
+                  e.currentTarget.style.borderColor = '#e2e8f0';
+                }}
               >
                 <i className="bi bi-search me-2"></i>
                 Find a Doctor
               </Button>
 
-              {/* Action B: Professional Dedicated Message Center Icon */}
+              {/* Action B: Message Center Node */}
               <div 
-                className="position-relative d-flex align-items-center justify-content-center bg-white border rounded-3 shadow-xs"
-                style={{ width: '42px', height: '42px', cursor: 'pointer', transition: 'all 0.2s' }}
+                className="position-relative d-flex align-items-center justify-content-center bg-white border rounded-3 text-secondary"
+                style={{ 
+                  width: '40px', 
+                  height: '40px', 
+                  cursor: 'pointer', 
+                  transition: 'all 0.2s',
+                  borderColor: '#e2e8f0'
+                }}
                 onClick={() => {
                   clearDoctorNotification();
-                  navigate('/messages/inbox'); // Leads directly to the active threads index view
+                  navigate('/messages/inbox'); 
                 }}
                 title="Open Message Inbox"
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--bs-primary)';
-                  e.currentTarget.style.backgroundColor = '#f8f9fa';
+                  e.currentTarget.style.borderColor = '#0284c7';
+                  e.currentTarget.style.backgroundColor = '#f8fafc';
+                  e.currentTarget.style.color = '#0284c7';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#dee2e6';
+                  e.currentTarget.style.borderColor = '#e2e8f0';
                   e.currentTarget.style.backgroundColor = '#fff';
+                  e.currentTarget.style.color = '#64748b';
                 }}
               >
-                <i className={`bi ${hasNewDoctorMessage ? 'bi-envelope-open-fill text-danger' : 'bi-envelope-fill text-secondary'}`} style={{ fontSize: '1.25rem' }}></i>
+                <i className={`bi ${hasNewDoctorMessage ? 'bi-envelope-open-fill text-danger' : 'bi-envelope-fill'}`} style={{ fontSize: '1.15rem' }}></i>
                 
                 {hasNewDoctorMessage && (
                   <Badge 
@@ -115,17 +145,41 @@ const UserDashboard = () => {
                 )}
               </div>
 
-              {/* Action C: Interactive Profile Circle */}
+              {/* Vertical Structural Separator Divider */}
+              <div className="bg-light" style={{ width: '1px', height: '28px' }}></div>
+
+              {/* Action C: Premium Clinical Profile Circle */}
               <div 
-                className="rounded-circle border border-2 border-primary bg-secondary text-white d-flex align-items-center justify-content-center shadow-sm fw-bold"
-                style={{ width: '42px', height: '42px', cursor: 'pointer', transition: 'transform 0.15s', fontSize: '1.1rem' }}
+                className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-uppercase"
+                style={{ 
+                  width: '42px', 
+                  height: '42px', 
+                  cursor: 'pointer', 
+                  fontSize: '1rem',
+                  backgroundColor: '#e0f2fe',  /* Soft premium clinical blue background */
+                  color: '#0369a1',            /* Highly visible sapphire slate text */
+                  border: '2px solid #bae6fd', /* Structural border ring */
+                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                  transition: 'all 0.15s ease'
+                }}
                 onClick={() => navigate('/profile')}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.backgroundColor = '#0369a1';
+                  e.currentTarget.style.color = '#ffffff';
+                  e.currentTarget.style.borderColor = '#0369a1';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.backgroundColor = '#e0f2fe';
+                  e.currentTarget.style.color = '#0369a1';
+                  e.currentTarget.style.borderColor = '#bae6fd';
+                }}
                 title="View your Profile & Settings"
               >
                 {(user?.name || 'V').charAt(0).toUpperCase()}
               </div>
+              
             </div>
           </div>
           
@@ -137,11 +191,12 @@ const UserDashboard = () => {
             </Tab>
             
             <Tab eventKey="record" title="Record Data">
-              <Row>
-                <Col lg={6} className="mb-4">
+              {/* Added gx-0 here to keep the internal recording grid flushed perfectly to the edge */}
+              <Row className="gx-0">
+                <Col lg={6} className="mb-4 pe-lg-3 text-start">
                   <HealthDataInput onRecordAdded={handleRefresh} />
                 </Col>
-                <Col lg={6} className="mb-4">
+                <Col lg={6} className="mb-4 ps-lg-3 text-start">
                   <SymptomInput onRecordAdded={handleRefresh} />
                 </Col>
               </Row>
@@ -162,3 +217,4 @@ const UserDashboard = () => {
 };
 
 export default UserDashboard;
+

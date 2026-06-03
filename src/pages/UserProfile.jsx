@@ -17,7 +17,11 @@ const ProfilePage = () => {
   }, [navigate]);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Shared loading throttle state
+  
+  // Independent loading states for each operational action
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [securityAlert, setSecurityAlert] = useState({ show: false, variant: '', message: '' });
   
@@ -68,7 +72,7 @@ const ProfilePage = () => {
     setSecurityAlert({ show: true, variant: 'success', message: 'Medical profile changes updated locally!' });
   };
 
-  // Hooks directly into the custom Laravel change-password logic block
+  // Dedicated Laravel change-password configuration handler
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     setSecurityAlert({ show: false, variant: '', message: '' });
@@ -78,13 +82,13 @@ const ProfilePage = () => {
       return;
     }
 
-    setIsSubmitting(true);
+    setIsChangingPassword(true);
 
     try {
       const token = localStorage.getItem('token');
       
       await axios.put(
-        'http://localhost:8000/api/user/change-password',
+        'http://192.168.100.244:8000/api/user/change-password',
         {
           current_password: passwordData.currentPassword,
           new_password: passwordData.newPassword,
@@ -118,11 +122,11 @@ const ProfilePage = () => {
         });
       }
     } finally {
-      setIsSubmitting(false);
+      setIsChangingPassword(false);
     }
   };
 
-  // CONNECTED: Fires the account termination sequence directly to Laravel backend
+  // Dedicated Laravel permanent termination sequence configuration handler
   const handleDeleteAccountSubmit = async (e) => {
     e.preventDefault();
     setSecurityAlert({ show: false, variant: '', message: '' });
@@ -138,13 +142,13 @@ const ProfilePage = () => {
       return;
     }
 
-    setIsSubmitting(true);
+    setIsDeletingAccount(true);
 
     try {
       const token = localStorage.getItem('token');
 
       // 3. Request destruction endpoint execution payload from api router matrix
-      await axios.delete('http://localhost:8000/api/user/terminate-account', {
+      await axios.delete('http://192.168.100.244:8000/api/user/terminate-account', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -164,7 +168,7 @@ const ProfilePage = () => {
         message: err.response?.data?.message || 'The application framework denied the permanent destruction execution query.' 
       });
     } finally {
-      setIsSubmitting(false);
+      setIsDeletingAccount(false);
     }
   };
 
@@ -303,8 +307,8 @@ const ProfilePage = () => {
                 <Form.Group className="mb-3">
                   <Form.Control type="password" name="confirmPassword" placeholder="Confirm New Password" value={passwordData.confirmPassword} onChange={handlePasswordChange} required />
                 </Form.Group>
-                <Button type="submit" variant="dark" className="w-100 btn-sm" disabled={isSubmitting}>
-                  {isSubmitting ? 'Processing...' : 'Update Security Settings'}
+                <Button type="submit" variant="dark" className="w-100 btn-sm" disabled={isChangingPassword || isDeletingAccount}>
+                  {isChangingPassword ? 'Processing...' : 'Update Security Settings'}
                 </Button>
               </Form>
             </Card>
@@ -316,8 +320,8 @@ const ProfilePage = () => {
                 <Form.Group className="mb-2">
                   <Form.Control type="text" placeholder="Type DELETE to close profile" value={deleteConfirmation} onChange={(e) => setDeleteConfirmation(e.target.value)} required className="text-center form-control-sm text-danger border-danger fw-bold" />
                 </Form.Group>
-                <Button type="submit" variant="danger" className="w-100 btn-sm" disabled={isSubmitting}>
-                  {isSubmitting ? 'Processing...' : 'Erase Everything'}
+                <Button type="submit" variant="danger" className="w-100 btn-sm" disabled={isChangingPassword || isDeletingAccount}>
+                  {isDeletingAccount ? 'Processing...' : 'Erase Everything'}
                 </Button>
               </Form>
             </Card>

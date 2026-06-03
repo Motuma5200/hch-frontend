@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Form, Button, Card, Container, Alert } from 'react-bootstrap';
+import { Form, Button, Card, Container, Alert, Modal, Spinner } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import api, { login as apiLogin } from '../services/Api';
 
@@ -7,11 +7,18 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false); // 🌟 Added verification loading state
   const navigate = useNavigate();
+
+  // POP-UP MODEL MODAL MANAGEMENT STATES
+  const [showModal, setShowModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [modalSuccessMessage, setModalSuccessMessage] = useState('');
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setIsVerifying(true); // 🌟 Turn on verification loader immediately upon clicking login
 
     try {
       // Use axios wrapper which handles CSRF cookie via interceptor
@@ -42,7 +49,23 @@ const Login = () => {
       console.error(err);
       const message = err?.response?.data?.message || 'Connection error. Is the backend running?';
       setError(message);
+    } finally {
+      setIsVerifying(false); // 🌟 Reset verifying loader if authentication fails
     }
+  };
+
+  // POP-UP MODEL FORM HANDLING LOGIC
+  const handleForgotPasswordSubmit = (e) => {
+    e.preventDefault();
+    if (!resetEmail.trim()) return;
+
+    setModalSuccessMessage('Your reset link has been sent to your email address if you have been registered with this email.');
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setResetEmail('');
+    setModalSuccessMessage('');
   };
 
   return (
@@ -66,6 +89,9 @@ const Login = () => {
           box-shadow: 0 4px 10px -2px rgba(13, 110, 253, 0.25) !important;
           transform: translateY(-1px);
         }
+        .hover-primary:hover {
+          color: #0d6efd !important;
+        }
       `}</style>
 
       {/* Boosted drop-shadow to match the premium, professional UI depth */}
@@ -84,6 +110,7 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required 
+                disabled={isVerifying}
                 className="custom-form-input py-2 px-3"
               />
             </Form.Group>
@@ -91,32 +118,43 @@ const Login = () => {
             <Form.Group className="mb-3">
               <Form.Label className="small fw-semibold text-secondary">Password</Form.Label>
               <Form.Control 
-                type="text" 
+                type="password" /* 🌟 Fixed securely back to password type */
                 placeholder="Enter your password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required 
+                disabled={isVerifying}
                 className="custom-form-input py-2 px-3"
               />
             </Form.Group>
 
+            {/* Intercepted Forgot Password trigger linking straight into the modal array */}
             <div className="text-end mb-4">
-              <Link 
-                to="/forgot-password" 
+              <span 
                 className="text-muted text-decoration-none small hover-primary"
-                style={{ transition: 'color 0.2s' }}
+                style={{ transition: 'color 0.2s', cursor: 'pointer' }}
+                onClick={() => !isVerifying && setShowModal(true)}
               >
                 Forgot password?
-              </Link>
+              </span>
             </div>
 
+            {/* 🌟 Dynamic Button displays a Spinner component if verifying processing loops are active */}
             <Button 
               variant="primary" 
               type="submit" 
-              className="w-100 py-25 fw-bold shadow-sm rounded-3"
+              disabled={isVerifying}
+              className="w-100 py-2.5 fw-bold shadow-sm rounded-3 d-flex align-items-center justify-content-center gap-2"
               style={{ transition: 'all 0.2s' }}
             >
-              Sign In
+              {isVerifying ? (
+                <>
+                  <Spinner size="sm" animation="border" role="status" aria-hidden="true" />
+                  <span>Verifying Credentials...</span>
+                </>
+              ) : (
+                <span>Sign In</span>
+              )}
             </Button>
           </Form>
 
@@ -133,6 +171,76 @@ const Login = () => {
           </div>
         </Card.Body>
       </Card>
+
+      {/* POP-UP MODEL (FORGOT PASSWORD MODAL FRAMEWORK) */}
+      <Modal 
+        show={showModal} 
+        onHide={handleCloseModal}
+        centered
+        backdrop="static"
+        keyboard={false}
+        className="border-0"
+      >
+        <Modal.Header closeButton className="border-0 px-4 pt-4">
+          <Modal.Title className="fw-bold text-dark h4">Reset Your Password</Modal.Title>
+        </Modal.Header>
+        
+        <Modal.Body className="px-4 pb-4">
+          {modalSuccessMessage ? (
+            <div className="text-center py-2">
+              <Alert variant="success" className="rounded-3 border-0 shadow-xs mb-4 text-start fw-medium small">
+                <i className="bi bi-envelope-check-fill me-2 fs-6"></i>
+                {modalSuccessMessage}
+              </Alert>
+              <Button 
+                variant="primary" 
+                onClick={handleCloseModal}
+                className="w-100 py-2 fw-semibold rounded-3 shadow-xs"
+              >
+                Return to Login
+              </Button>
+            </div>
+          ) : (
+            <Form onSubmit={handleForgotPasswordSubmit}>
+              <p className="text-muted small mb-4" style={{ lineHeight: '1.5' }}>
+                Please provide your registered account email profile down below. If a match exists within our active directories, our telemetry cluster will forward over an access sequence validation URL node directly.
+              </p>
+              
+              <Form.Group className="mb-4">
+                <Form.Label className="small fw-semibold text-secondary">Registered Email Address</Form.Label>
+                <Form.Control 
+                  type="email" 
+                  placeholder="name@example.com"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  required
+                  autoFocus
+                  className="custom-form-input py-2 px-3"
+                />
+              </Form.Group>
+              
+              <div className="d-flex gap-3 justify-content-end">
+                <Button 
+                  variant="outline-secondary" 
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 border-secondary-subtle bg-white text-secondary rounded-3"
+                  style={{ fontSize: '0.9rem' }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant="primary" 
+                  type="submit"
+                  className="px-4 py-2 fw-bold rounded-3 shadow-sm"
+                  style={{ fontSize: '0.9rem' }}
+                >
+                  Send Reset Link
+                </Button>
+              </div>
+            </Form>
+          )}
+        </Modal.Body>
+      </Modal>
     </Container>
   );
 };

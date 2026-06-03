@@ -6,6 +6,9 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 
+// ✅ IMPORT YOUR CUSTOM API WRAPPER
+import api from '../services/Api'; // Double check this relative path matches your project structure!
+
 // FIX DEFAULT LEAFLET ICONS
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -95,8 +98,6 @@ const HospitalMap = () => {
   const [isStraightLine, setIsStraightLine] = useState(false);
 
   const defaultCenter = [9.0300, 38.7400]; // Addis Ababa fallback
-  
-  const API_BASE_URL = window.env?.REACT_APP_API_URL || import.meta.env?.VITE_API_URL || 'http://localhost:8000';
 
   const fetchIPLocation = async (isMounted) => {
     try {
@@ -119,7 +120,7 @@ const HospitalMap = () => {
     }
   };
 
-  // REOPTIMIZED LOCATION DETECTOR
+  // LOCATION DETECTOR EFFECT
   useEffect(() => {
     let isMounted = true;
 
@@ -137,7 +138,6 @@ const HospitalMap = () => {
     const handleFailure = (err) => {
       console.warn('High accuracy geolocation failed:', err);
       
-      // Fallback Phase 1: Try lower accuracy (faster, uses cell towers/Wi-Fi routers instead of hardware GPS)
       if (navigator.geolocation && err.code === err.TIMEOUT) {
         console.log('Retrying with balanced accuracy settings...');
         navigator.geolocation.getCurrentPosition(
@@ -160,7 +160,6 @@ const HospitalMap = () => {
       navigator.geolocation.getCurrentPosition(
         handleSuccess,
         handleFailure,
-        // Change maximumAge to allow cached locations from the browser (e.g., within last 5 mins)
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
       );
     } else {
@@ -173,10 +172,11 @@ const HospitalMap = () => {
     };
   }, []);
 
+  // ✅ FIXED FETCH SYSTEM: Reuses your working API instance configurations
   useEffect(() => {
     const fetchHospitals = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/hospitals`);
+        const response = await api.get('/api/hospitals');
         setHospitals(response.data);
       } catch (err) {
         console.error('Failed to load hospitals:', err);
@@ -186,7 +186,7 @@ const HospitalMap = () => {
       }
     };
     fetchHospitals();
-  }, [API_BASE_URL]);
+  }, []); 
 
   useEffect(() => {
     if (!userPosition || hospitals.length === 0) {

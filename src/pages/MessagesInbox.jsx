@@ -14,6 +14,31 @@ const MessagesInbox = () => {
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
 
+  // Helper utility to safely split full calendar dates from individual time intervals
+  const parseMessageDateTime = (rawStamp) => {
+    if (!rawStamp || rawStamp === 'Just now') {
+      return { dateStr: 'Today', timeStr: 'Just now' };
+    }
+    
+    try {
+      const parsedDate = new Date(rawStamp);
+      // If backend sends an invalid non-ISO string fallback safely
+      if (isNaN(parsedDate.getTime())) {
+        return { dateStr: 'Prior Messages', timeStr: rawStamp };
+      }
+      
+      const dateOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+      const timeOptions = { hour: '2-digit', minute: '2-digit' };
+      
+      return {
+        dateStr: parsedDate.toLocaleDateString(undefined, dateOptions),
+        timeStr: parsedDate.toLocaleTimeString(undefined, timeOptions)
+      };
+    } catch (e) {
+      return { dateStr: 'Prior Messages', timeStr: rawStamp };
+    }
+  };
+
   // Fetch threads
   useEffect(() => {
     const fetchAndFilterActiveChats = async () => {
@@ -99,9 +124,9 @@ const MessagesInbox = () => {
       // Match database blueprint configurations upon dynamic layout push insertions
       const sentMsg = res.data?.id ? res.data : {
         id: Date.now(),
-        sender_type: 'client', // Corrected key mapping match layout
+        sender_type: 'client', 
         message: newMessage,
-        timestamp: 'Just now'
+        timestamp: new Date().toISOString()
       };
 
       setMessages(prev => [...prev, sentMsg]);
@@ -155,8 +180,10 @@ const MessagesInbox = () => {
     }
   };
 
-  // FIXED: Adjusted to evaluate database field parameters accurately
   const isMe = (msg) => msg.sender_type === 'client';
+
+  // State tracker to clear memory tracking boundaries across render frames
+  let lastDisplayedDate = null;
 
   return (
     <div className="container" style={{ paddingTop: '90px', paddingBottom: '30px' }}>
@@ -221,83 +248,110 @@ const MessagesInbox = () => {
                     <div className="m-auto text-center">
                       <Spinner animation="border" variant="primary" />
                     </div>
-                  ) : messages.map((msg, index) => {
-                    const me = isMe(msg);
-                    const currentMsgId = msg.id || msg._id;
-                    const isEditing = editingId === currentMsgId;
+                  ) : (
+                    messages.map((msg, index) => {
+                      const me = isMe(msg);
+                      const currentMsgId = msg.id || msg._id;
+                      const isEditing = editingId === currentMsgId;
+                      
+                      // Run the time calculation engine
+                      const { dateStr, timeStr } = parseMessageDateTime(msg.timestamp || msg.created_at);
+                      
+                      // Check if a structural date separator banner needs to be introduced
+                      let showDateHeader = false;
+                      if (dateStr !== lastDisplayedDate) {
+                        showDateHeader = true;
+                        lastDisplayedDate = dateStr;
+                      }
 
-                    return (
-                      <div key={currentMsgId || index} className={`d-flex ${me ? 'justify-content-end' : 'justify-content-start'}`}>
-                        <div className="position-relative" style={{ width: isEditing ? '100%' : 'auto', maxWidth: '75%' }}>
-                          <div className={`p-3 rounded-3 shadow-xs ${me ? 'bg-primary text-white rounded-br-0' : 'bg-white text-dark rounded-bl-0'}`}>
-                            
-                            {isEditing ? (
-                              <Form.Control
-                                as="textarea"
-                                value={editText}
-                                onChange={(e) => setEditText(e.target.value)}
-                                className="mb-2 text-dark"
-                                rows={2}
-                                autoFocus
-                              />
-                            ) : (
-                              <p className="m-0 small text-start" style={{ whiteSpace: 'pre-wrap' }}>{msg.message}</p>
-                            )}
+                      return (
+                        <React.Fragment key={currentMsgId || index}>
+                          {/* 🌟 STRUCTURAL TIMELINE SEPARATOR BANNER */}
+                          {showDateHeader && (
+                            <div className="d-flex justify-content-center my-3">
+                              <span 
+                                className="badge bg-white text-secondary border border-light-subtle px-3 py-2 rounded-pill shadow-xs text-uppercase fw-bold"
+                                style={{ fontSize: '0.75rem', letterSpacing: '0.05em' }}
+                              >
+                                {dateStr}
+                              </span>
+                            </div>
+                          )}
 
-                            <div className={`extra-small mt-1 text-start ${me ? 'text-white text-opacity-75' : 'text-muted'}`}>
-                              {msg.timestamp || msg.created_at}
+                          <div className={`d-flex ${me ? 'justify-content-end' : 'justify-content-start'}`}>
+                            <div className="position-relative" style={{ width: isEditing ? '100%' : 'auto', maxWidth: '75%' }}>
+                              <div className={`p-3 rounded-3 shadow-xs ${me ? 'bg-primary text-white rounded-br-0' : 'bg-white text-dark rounded-bl-0'}`}>
+                                
+                                {isEditing ? (
+                                  <Form.Control
+                                    as="textarea"
+                                    value={editText}
+                                    onChange={(e) => setEditText(e.target.value)}
+                                    className="mb-2 text-dark"
+                                    rows={2}
+                                    autoFocus
+                                  />
+                                ) : (
+                                  <p className="m-0 small text-start" style={{ whiteSpace: 'pre-wrap' }}>{msg.message}</p>
+                                )}
+
+                                {/* Render clean local time token inside individual message frames */}
+                                <div className={`extra-small mt-1 text-start ${me ? 'text-white text-opacity-75' : 'text-muted'}`} style={{ fontSize: '0.7rem' }}>
+                                  {timeStr}
+                                </div>
+                              </div>
+
+                              {/* Quick Management Triggers displayed strictly on user-owned assets */}
+                              {me && !isEditing && (
+                                <div className="mt-1 d-flex gap-2 justify-content-end">
+                                  <Button 
+                                    size="sm" 
+                                    variant="link" 
+                                    onClick={() => handleEdit(msg)}
+                                    className="py-0 px-1 extra-small text-decoration-none text-primary fw-medium"
+                                    style={{ fontSize: '0.72rem' }}
+                                  >
+                                    Edit
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="link" 
+                                    onClick={() => handleDelete(currentMsgId)}
+                                    className="py-0 px-1 extra-small text-decoration-none text-danger fw-medium"
+                                    style={{ fontSize: '0.72rem' }}
+                                  >
+                                    Delete
+                                  </Button>
+                                </div>
+                              )}
+
+                              {/* Save Framework actions */}
+                              {isEditing && (
+                                <div className="mt-1 d-flex gap-2 justify-content-end">
+                                  <Button 
+                                    size="sm" 
+                                    variant="success" 
+                                    onClick={() => handleSaveEdit(currentMsgId)}
+                                    className="py-1 px-3 extra-small fw-bold shadow-xs"
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="secondary" 
+                                    onClick={() => { setEditingId(null); setEditText(""); }}
+                                    className="py-1 px-2 extra-small"
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           </div>
-
-                          {/* Quick Management Triggers displayed strictly on user-owned assets */}
-                          {me && !isEditing && (
-                            <div className="mt-1 d-flex gap-2 justify-content-end">
-                              <Button 
-                                size="sm" 
-                                variant="link" 
-                                onClick={() => handleEdit(msg)}
-                                className="py-0 px-1 extra-small text-decoration-none text-primary fw-medium"
-                                style={{ fontSize: '0.72rem' }}
-                              >
-                                Edit
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="link" 
-                                onClick={() => handleDelete(currentMsgId)}
-                                className="py-0 px-1 extra-small text-decoration-none text-danger fw-medium"
-                                style={{ fontSize: '0.72rem' }}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          )}
-
-                          {/* Save Framework actions */}
-                          {isEditing && (
-                            <div className="mt-1 d-flex gap-2 justify-content-end">
-                              <Button 
-                                size="sm" 
-                                variant="success" 
-                                onClick={() => handleSaveEdit(currentMsgId)}
-                                className="py-1 px-3 extra-small fw-bold shadow-xs"
-                              >
-                                Save
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="secondary" 
-                                onClick={() => { setEditingId(null); setEditText(""); }}
-                                className="py-1 px-2 extra-small"
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                        </React.Fragment>
+                      );
+                    })
+                  )}
                 </div>
 
                 {/* Input Area */}

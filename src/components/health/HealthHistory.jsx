@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Row, Col, Form, Button, Spinner, Alert, Table, InputGroup, FormControl } from 'react-bootstrap';
-import { healthMetricsAPI } from '../../services/healthMetrics';
+
+import api from '../../services/Api'
 
 const metricOptions = [
   { value: '', label: 'All' },
@@ -29,11 +30,15 @@ const HealthHistory = () => {
     setApiError(null);
 
     try {
-      // Use underlying API helper so token header is handled by axios interceptor
-      const metricParam = metricType || null;
-      const res = await healthMetricsAPI.getHistory(metricParam, days);
+      // ✅ FIXED: Axios query routing structured directly onto your Wi-Fi network host address configuration
+      const res = await api.get('/api/health/history', {
+        params: {
+          metric_type: metricType || null,
+          days: days
+        }
+      });
 
-      // axios returns data in res.data
+      // Axios returns data directly in res.data
       const result = res.data;
 
       if (!result || !result.success) {
@@ -44,7 +49,6 @@ const HealthHistory = () => {
 
       // Normalize entries into common shape
       const normalized = data.map(item => {
-        // possible shapes: { date, metric_type, value } or { recorded_at, metric_type, value }
         const date = item.recorded_at || item.date || item.timestamp || item.created_at || item.time;
         const type = item.metric_type || item.type || (item.symptom ? 'symptom' : (item.metric || 'unknown'));
 
@@ -61,14 +65,15 @@ const HealthHistory = () => {
         return { id: item.id ?? `${date}-${type}-${Math.random()}`, date, type, display, raw: item };
       });
 
-      // Sort descending by date if possible
+      // Sort descending by date
       normalized.sort((a, b) => new Date(b.date) - new Date(a.date));
 
       setEntries(normalized);
       setPage(1);
     } catch (err) {
       console.error('History fetch error', err);
-      setApiError(err.message || 'Unable to fetch history');
+      const msg = err.response?.data?.message || err.message || 'Unable to fetch history';
+      setApiError(msg);
       setEntries([]);
     } finally {
       setLoading(false);
